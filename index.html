@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PocketTables</title>
+<meta name="description" content="Apprendre les tables de multiplication jusqu’au réflexe, et s’entraîner au calcul mental.">
+<meta name="theme-color" content="#F1F2F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12141B" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PocketTables">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+:root {
+  --bg: #F1F2F5; --surface: #FFFFFF; --ink: #171A24; --muted: #6B7180; --faint: #A3A8B5;
+  --line: #DDE0E7; --cell: #E3E5EB; --press: rgba(23, 26, 36, .05);
+  --accent: #474CB8; --on-accent: #FFFFFF; --bad: #C23B4E;
+  --serif: "STIX Two Text", ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12141B; --surface: #1B1E28; --ink: #E8EAF0; --muted: #8E94A5; --faint: #5F6578;
+    --line: #2A2E3B; --cell: #232733; --press: rgba(232, 234, 240, .06);
+    --accent: #969BF6; --on-accent: #12141B; --bad: #F07C8C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12141B; --surface: #1B1E28; --ink: #E8EAF0; --muted: #8E94A5; --faint: #5F6578;
+  --line: #2A2E3B; --cell: #232733; --press: rgba(232, 234, 240, .06);
+  --accent: #969BF6; --on-accent: #12141B; --bad: #F07C8C;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+body { overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#app { position: fixed; inset: 0; overflow: hidden; }
+
+.screen {
+  position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--bg);
+  padding: calc(env(safe-area-inset-top, 0px) + 6px) 20px calc(env(safe-area-inset-bottom, 0px) + 40px);
+  -webkit-overflow-scrolling: touch; will-change: transform;
+}
+.inner { max-width: 560px; margin: 0 auto; }
+
+/* barre du haut */
+.top { display: flex; align-items: center; justify-content: space-between; height: 48px; margin: 0 -10px; }
+.icon { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; border-radius: 12px; color: var(--ink); }
+.icon:active { background: var(--press); }
+.icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.wordmark { font: 600 17px/1 var(--sans); letter-spacing: -.01em; padding-left: 10px; }
+.wordmark i { font: italic 400 19px/1 var(--serif); color: var(--accent); margin: 0 1px; }
+.title { font: 650 32px/1.1 var(--sans); letter-spacing: -.025em; margin: 6px 0 20px; }
+.h2 { font: 600 13px/1.3 var(--sans); color: var(--muted); margin: 30px 0 10px; letter-spacing: .01em; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; line-height: 1.45; }
+
+/* lignes de navigation */
+.rows { border-top: 1px solid var(--line); }
+.row {
+  position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr auto; align-items: center;
+  column-gap: 12px; row-gap: 3px; width: 100%; text-align: left; padding: 15px 0; border: 0; border-bottom: 1px solid var(--line);
+  background: none;
+}
+.row::before { content: ""; position: absolute; inset: 0 -20px; background: var(--press); opacity: 0; z-index: -1; transition: opacity .15s; }
+.row:active::before { opacity: 1; }
+.row[disabled] { opacity: .45; pointer-events: none; }
+.row-t { font: 600 17px/1.25 var(--sans); letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+.row-s { grid-column: 1; font-size: 14px; line-height: 1.4; color: var(--muted); }
+.row-s.mx { font: 17px/1.3 var(--serif); color: var(--muted); font-variant-numeric: lining-nums; }
+.chev { grid-column: 2; grid-row: 1 / span 3; color: var(--faint); display: grid; }
+.chev svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.badge { font: 600 11px/1 var(--sans); color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); padding: 4px 7px; border-radius: 6px; }
+.flag { font: 600 11px/1 var(--sans); color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); padding: 4px 7px; border-radius: 6px; }
+.rec { grid-column: 1; font-size: 13px; color: var(--accent); font-weight: 600; }
+
+/* accueil */
+.hero { padding: 6px 0 26px; }
+.hero-line { margin: 18px 0 8px; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.hero-line b { color: var(--ink); font-weight: 600; }
+
+/* grille de maîtrise */
+.hm { display: grid; grid-template-columns: 16px repeat(var(--n), 1fr); gap: 3px; width: 100%; }
+.hm.dense { gap: 2px; grid-template-columns: 14px repeat(var(--n), 1fr); }
+.hm .lab { font: 500 10px/1 var(--sans); color: var(--faint); display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.hm.dense .lab { font-size: 8px; }
+.hm .c { aspect-ratio: 1; border-radius: 4px; border: 0; padding: 0; background: var(--cell); min-width: 0; }
+.hm.dense .c { border-radius: 2px; }
+.l0 { --fill: color-mix(in srgb, var(--bad) 70%, var(--cell)); }
+.l1 { --fill: color-mix(in srgb, var(--accent) 22%, var(--cell)); }
+.l2 { --fill: color-mix(in srgb, var(--accent) 45%, var(--cell)); }
+.l3 { --fill: color-mix(in srgb, var(--accent) 70%, var(--cell)); }
+.l4 { --fill: var(--accent); }
+.hm .c[class*=" l"]:not(.l-1) { background: var(--fill); }
+.hm .c:active { transform: scale(.85); }
+.hm.wave .c { animation: cellIn .55s var(--ease) both; animation-delay: calc(var(--d) * 20ms); }
+@keyframes cellIn { from { transform: scale(.3); opacity: 0; } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--fill, var(--cell)); display: inline-block; }
+.legend .ramp { gap: 2px; }
+
+/* segments */
+.seg { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--cell); border-radius: 11px; padding: 3px; }
+.seg button { position: relative; z-index: 1; border: 0; background: none; font: 600 14px/1 var(--sans); color: var(--muted); padding: 10px 4px; border-radius: 8px; transition: color .2s; }
+.seg button[aria-selected="true"] { color: var(--ink); }
+.seg-ind {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / var(--n)); border-radius: 8px;
+  background: var(--surface); box-shadow: 0 1px 3px rgba(15, 18, 30, .1); transition: transform .32s var(--ease);
+}
+
+/* onglets */
+.tabs { position: relative; margin-top: 18px; }
+.tabs .rows { margin-top: 0 !important; }
+.tabs .weak .h2 { margin-top: 6px; }
+.tabs > .tab > .intro { margin-top: 4px; }
+.tab[hidden] { display: none; }
+
+/* leçons */
+.lessons { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.lesson { grid-template-columns: 30px 1fr auto; }
+.lesson .num { grid-row: 1 / span 3; font: 18px/1 var(--serif); color: var(--faint); font-variant-numeric: lining-nums; align-self: start; padding-top: 2px; }
+.lesson .row-t, .lesson .row-s, .lesson .mbar { grid-column: 2; }
+.lesson .chev { grid-column: 3; }
+.mbar { height: 3px; border-radius: 2px; background: var(--cell); overflow: hidden; margin-top: 6px; max-width: 160px; }
+.mbar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+.weak { padding: 4px 0 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip, .fact {
+  border: 0; border-radius: 9px; padding: 8px 11px; font: 17px/1 var(--serif); font-variant-numeric: lining-nums;
+  background: var(--cell); color: var(--ink);
+}
+.fact[class*=" l"]:not(.l-1) { background: var(--fill); }
+.fact.l4, .fact.l3 { color: var(--on-accent); }
+.fact.l0 { color: var(--on-accent); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 13%, transparent); color: var(--bad); }
+.inline { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.intro { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 0 0 16px; }
+
+/* boutons */
+.btn {
+  display: block; width: 100%; height: 52px; border: 0; border-radius: 14px; font: 600 16px/1 var(--sans);
+  background: var(--cell); color: var(--ink); transition: transform .12s, opacity .12s;
+}
+.btn:active { transform: scale(.98); opacity: .85; }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.danger { background: none; color: var(--bad); }
+.btn.link { background: none; color: var(--muted); font-weight: 500; height: 44px; }
+.actions { display: grid; gap: 10px; margin-top: 22px; }
+.actions.two { grid-template-columns: 1fr 1fr; }
+
+/* leçon */
+.prose p { font-size: 16px; line-height: 1.6; margin: 0 0 12px; max-width: 62ch; }
+.ex {
+  margin: 18px 0; padding: 4px 0 4px 18px; border-left: 2px solid var(--line); cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.ex-l { font: 24px/1.5 var(--serif); font-variant-numeric: lining-nums; }
+.ex-l:first-child { color: var(--ink); }
+.ex-l + .ex-l { color: var(--muted); font-size: 21px; }
+.ex-l:last-of-type:not(:first-child) { color: var(--ink); }
+.ex-l.hid { display: none; }
+.ex-h { font-size: 13px; color: var(--faint); margin: 4px 0 0; }
+.ex.done .ex-h { display: none; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* séance */
+.screen-session { display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px) + 4px) 0 0; overflow: hidden; }
+.s-top { display: flex; align-items: center; gap: 10px; padding: 0 12px 0 6px; height: 48px; max-width: 600px; width: 100%; margin: 0 auto; }
+.bar { flex: 1; height: 3px; background: var(--cell); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 2px; transition: width .35s var(--ease); }
+.count { font: 500 14px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+.count.big { font: 400 22px/1 var(--serif); color: var(--ink); }
+.stage { user-select: none; -webkit-user-select: none; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 18px; touch-action: none; min-height: 0; }
+.card { width: 100%; max-width: 560px; text-align: center; }
+.title-s { font-size: 13px; color: var(--faint); margin: 0 0 18px; min-height: 1em; }
+.expr {
+  font-family: var(--serif); font-size: clamp(42px, 14vw, 68px); line-height: 1.2; white-space: nowrap;
+  font-variant-numeric: lining-nums; letter-spacing: -.01em;
+}
+.expr .op { color: var(--muted); margin: 0 .2em; }
+.expr .op.mod { font-style: italic; font-size: .8em; }
+.expr sup { font-size: .55em; line-height: 0; vertical-align: .85em; margin-left: .03em; }
+.expr.stack .q { white-space: nowrap; }
+.expr.stack .aline { margin-top: .2em; }
+.slot {
+  display: inline-block; min-width: 2.2ch; padding: 0 .1em; border-bottom: 2px solid var(--line);
+  text-align: center; line-height: 1.12; position: relative; transition: color .15s, border-color .15s;
+}
+.expr.stack .slot { min-width: 3ch; }
+.slot .ghost { color: var(--faint); }
+.slot.ok { color: var(--accent); border-color: var(--accent); }
+.slot.bad { color: var(--bad); border-color: var(--bad); }
+.slot.reveal { color: var(--accent); border-color: transparent; }
+.caret {
+  display: inline-block; width: 2px; height: .82em; background: var(--accent); vertical-align: -.06em; margin-left: 1px;
+  animation: blink 1.05s steps(1) infinite; border-radius: 1px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.sub { font-size: 13px; color: var(--muted); margin-top: 14px; min-height: 0; }
+.sub:empty { display: none; }
+.note { min-height: 5.2em; margin: 22px auto 0; max-width: 34ch; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.note .t { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+.note .m { display: block; font: 20px/1.4 var(--serif); color: var(--ink); font-variant-numeric: lining-nums; }
+.note .m + .m { margin-top: 2px; }
+.note .you { display: block; margin-bottom: 8px; color: var(--bad); }
+.note .you s { text-decoration-thickness: 1.5px; }
+.note .do { display: block; margin-top: 8px; font-size: 13px; color: var(--faint); }
+.ghint { font-size: 12px; color: var(--faint); margin: 10px 0 0; text-align: center; min-height: 1.2em; }
+
+.pad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%; max-width: 420px; margin: 0 auto;
+  padding: 6px 14px calc(env(safe-area-inset-bottom, 0px) + 12px); user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.key {
+  height: 62px; border: 0; border-radius: 18px; background: transparent; color: var(--ink);
+  font: 300 30px/1 var(--sans); font-variant-numeric: tabular-nums; display: grid; place-items: center;
+  transition: background .18s, transform .18s; -webkit-touch-callout: none;
+}
+.key.down { background: var(--cell); transform: scale(.94); transition: none; }
+.key svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.key.ok { color: var(--accent); }
+.key.del { color: var(--muted); }
+.cont { width: 100%; max-width: 420px; margin: 0 auto; padding: 6px 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+.cont[hidden], .pad[hidden] { display: none; }
+
+/* calcul mental */
+.mrow { position: relative; }
+.mrow .row { grid-template-columns: 1fr 40px auto; }
+.mrow .row .chev { grid-column: 3; }
+.mrow .stat { font-size: 13px; }
+.tipbtn { position: absolute; top: 50%; right: 22px; transform: translateY(-50%); color: var(--faint); }
+
+/* bilan de séance */
+.sum-title { font-size: 15px; color: var(--muted); margin: 8px 0 0; }
+.sum-score { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 6px; font-family: var(--serif); }
+.sum-score .big { font-size: 88px; line-height: 1; letter-spacing: -.03em; font-variant-numeric: lining-nums; }
+.sum-score .of { font-size: 26px; color: var(--muted); }
+.sum-line { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 0 0 14px; }
+.errs { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.errs li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.e-q { font: 22px/1.3 var(--serif); font-variant-numeric: lining-nums; }
+.e-q sup { font-size: .6em; }
+.e-t { font-size: 14px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+.e-t b { color: var(--ink); font-weight: 600; }
+.e-steps { margin-top: 6px; font: 17px/1.5 var(--serif); color: var(--muted); }
+
+/* réglages */
+.set { display: grid; gap: 8px; margin: 0 0 18px; }
+.set-l { font-size: 15px; font-weight: 600; }
+.set-help { font-size: 13px; line-height: 1.5; color: var(--muted); margin: -8px 0 18px; }
+
+/* feuilles */
+.backdrop { position: fixed; inset: 0; background: rgba(8, 10, 18, .36); z-index: 50; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; z-index: 51;
+  background: var(--surface); border-radius: 22px 22px 0 0; max-height: 86vh; overflow-y: auto;
+  padding: 10px 22px calc(env(safe-area-inset-bottom, 0px) + 22px); box-shadow: 0 -8px 40px rgba(8, 10, 18, .18);
+}
+.grab { width: 38px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 16px; }
+.sheet h3 { font: 650 22px/1.2 var(--sans); letter-spacing: -.02em; margin: 0 0 14px; }
+.fs-expr { font: 46px/1.15 var(--serif); font-variant-numeric: lining-nums; margin: 4px 0 6px; }
+.fs-lv { font-size: 13px; font-weight: 600; margin: 0 0 16px; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.fs-lv i { width: 10px; height: 10px; border-radius: 3px; background: var(--fill, var(--cell)); }
+.fs-tip .t { display: block; font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.fs-tip .m { display: block; font: 21px/1.4 var(--serif); font-variant-numeric: lining-nums; }
+.fs-stats { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.tips dt { font-weight: 600; font-size: 15px; margin-top: 16px; }
+.tips dd { margin: 4px 0 0; font: 18px/1.5 var(--serif); color: var(--ink); font-variant-numeric: lining-nums; }
+.pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; }
+.pick button { border: 0; border-radius: 14px; background: var(--cell); padding: 14px 0 12px; display: grid; gap: 8px; justify-items: center; }
+.pick button:active { transform: scale(.95); }
+.pick b { font: 400 26px/1 var(--serif); font-variant-numeric: lining-nums; }
+.pick .mbar { width: 60%; margin: 0; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); transform: translateX(-50%); z-index: 60;
+  background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+
+/* méthode */
+.method h2 { font: 600 18px/1.3 var(--sans); margin: 28px 0 8px; letter-spacing: -.01em; }
+.method p { font-size: 16px; line-height: 1.6; margin: 0 0 10px; max-width: 62ch; }
+.method .ref { font-size: 13px; color: var(--muted); }
+
+@media (min-width: 700px) {
+  .screen { padding-left: 32px; padding-right: 32px; }
+  .key { height: 66px; }
+}
+@media (hover: hover) {
+  .key:hover { background: var(--press); }
+  .row:hover::before { opacity: .6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .caret { animation: none; }
+}
+
+</style>
+</head>
+<body>
+<main id="app"></main>
+<noscript><p style="padding:24px">PocketTables a besoin de JavaScript.</p></noscript>
+<script>
+'use strict';
+/* ================= PocketTables · logique pure ================= */
+const DAY = 864e5, MIN = 6e4;
+// Intervalles de Leitner par niveau (boîte 0 à 5)
+const INTERVALS = [0, 10 * MIN, DAY, 3 * DAY, 7 * DAY, 21 * DAY];
+const SUPS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const sup = n => String(n).replace(/\d/g, d => SUPS[d]);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+const group = s => (s.length >= 5 ? s.replace(/\B(?=(\d{3})+(?!\d))/g, '\u202F') : s);
+const F = n => (n < 0 ? '−' : '') + group(String(Math.abs(n)));
+
+/* ---------- état ---------- */
+const STORE_KEY = 'pockettables.v1';
+function defaultState() {
+  return {
+    v: 1,
+    settings: { max: 12, thr: 3, len: 20, auto: true, theme: 'auto', level: 1 },
+    facts: {}, mental: {}, sprint: {}, flags: {},
+  };
+}
+function migrate(s) {
+  const d = defaultState();
+  if (!s || typeof s !== 'object') return d;
+  return {
+    ...d, ...s,
+    settings: { ...d.settings, ...(s.settings || {}) },
+    facts: s.facts || {}, mental: s.mental || {}, sprint: s.sprint || {}, flags: s.flags || {},
+  };
+}
+
+/* ---------- faits ---------- */
+const fkey = (a, b) => (a <= b ? a + 'x' + b : b + 'x' + a);
+const fparse = k => k.split('x').map(Number);
+function factKeys(max) {
+  const r = [];
+  for (let a = 2; a <= max; a++) for (let b = a; b <= max; b++) r.push(fkey(a, b));
+  return r;
+}
+function thrMs(st, a, b) {
+  return st.settings.thr * 1000 + (Math.max(a, b) > 12 ? 2000 : 0) + (Math.min(a, b) > 12 ? 2000 : 0);
+}
+const seenF = (st, k) => !!(st.facts[k] && st.facts[k].n);
+
+// -1 jamais vu · 0 à revoir · 1 en cours · 2 consolidé · 3 solide · 4 réflexe
+function levelOf(st, k) {
+  const f = st.facts[k];
+  if (!f || !f.n) return -1;
+  if (f.box === 0) return 0;
+  if (f.box <= 2) return 1;
+  if (f.box === 3) return 2;
+  const [a, b] = fparse(k);
+  return f.t && f.t <= thrMs(st, a, b) ? 4 : 3;
+}
+const LV_VALUE = { '-1': 0, 0: 0.1, 1: 0.35, 2: 0.6, 3: 0.8, 4: 1 };
+const LV_NAME = { '-1': 'Jamais vu', 0: 'À revoir', 1: 'En cours', 2: 'Consolidé', 3: 'Solide', 4: 'Réflexe' };
+
+function recordFact(st, k, ok, ms, aided, now = Date.now()) {
+  const [a, b] = fparse(k);
+  const thr = thrMs(st, a, b);
+  let f = st.facts[k];
+  const first = !f || !f.n;
+  if (!f) f = st.facts[k] = { box: 0, n: 0, ok: 0, err: 0, t: 0, due: 0, last: 0, h: '' };
+  const before = levelOf(st, k);
+  f.n++;
+  if (ok) {
+    f.ok++;
+    const timed = ms != null && !aided;
+    const m = Math.min(ms == null ? 30000 : ms, 30000);
+    if (timed) f.t = f.t ? Math.round(f.t * 0.6 + m * 0.4) : Math.round(m);
+    const fast = timed && m <= thr;
+    if (fast) f.box = first ? 3 : Math.min(5, f.box + 1);
+    else f.box = aided ? 1 : Math.max(1, f.box - 1);
+  } else {
+    f.err++;
+    f.box = 0;
+  }
+  f.h = (f.h + (ok ? '1' : '0')).slice(-6);
+  f.due = now + INTERVALS[f.box];
+  f.last = now;
+  return { before, after: levelOf(st, k) };
+}
+
+function weakScore(st, k) {
+  const f = st.facts[k];
+  if (!f || !f.n) return 0;
+  const [a, b] = fparse(k);
+  const recent = f.h ? (f.h.split('0').length - 1) / f.h.length : 0;
+  const slow = f.t ? Math.max(0, f.t / thrMs(st, a, b) - 1) : 0;
+  return (5 - f.box) * 0.5 + recent * 3 + (f.err / f.n) * 2 + Math.min(slow, 2);
+}
+function isWeak(st, k) {
+  const f = st.facts[k];
+  if (!f || !f.n) return false;
+  const [a, b] = fparse(k);
+  return f.box <= 1 || f.h.slice(-3).includes('0') || (f.t > 0 && f.t > thrMs(st, a, b) * 1.4);
+}
+function weakFacts(st, n = 12) {
+  return factKeys(st.settings.max).filter(k => isWeak(st, k))
+    .sort((x, y) => weakScore(st, y) - weakScore(st, x)).slice(0, n);
+}
+function tableStats(st) {
+  const max = st.settings.max, out = [];
+  for (let n = 2; n <= max; n++) {
+    let sum = 0, seen = 0, err = 0, tot = 0;
+    for (let m = 2; m <= max; m++) {
+      const k = fkey(n, m), lv = levelOf(st, k);
+      sum += LV_VALUE[lv];
+      if (lv >= 0) { seen++; err += st.facts[k].err; tot += st.facts[k].n; }
+    }
+    out.push({ n, mastery: sum / (max - 1), seen, errRate: tot ? err / tot : 0 });
+  }
+  return out;
+}
+function weakTables(st) {
+  return tableStats(st).filter(t => t.seen >= 3 && (t.errRate > 0.15 || t.mastery < 0.5))
+    .sort((x, y) => (x.mastery - x.errRate) - (y.mastery - y.errRate)).slice(0, 4);
+}
+function overview(st, now = Date.now()) {
+  const keys = factKeys(st.settings.max);
+  let reflex = 0, due = 0, seen = 0;
+  for (const k of keys) {
+    const lv = levelOf(st, k);
+    if (lv === 4) reflex++;
+    if (lv >= 0) { seen++; if (st.facts[k].due <= now) due++; }
+  }
+  return { total: keys.length, reflex, due, seen, unseen: keys.length - seen, weak: weakFacts(st, 99).length };
+}
+
+/* ---------- ordre pédagogique ---------- */
+const RANK = { 2: 1, 10: 1, 5: 2, 11: 2, 4: 3, 9: 3, 3: 3, 20: 4, 12: 5, 6: 6, 15: 6, 8: 7, 19: 7, 7: 8 };
+function difficulty(k) {
+  const [a, b] = fparse(k);
+  const r = n => (RANK[n] !== undefined ? RANK[n] : 9);
+  let d = Math.min(r(a), r(b));
+  if (a === b && a <= 12) d = Math.min(d, 4);
+  if (a > 12 && b > 12) d = 10;
+  return d * 1000 + a * b;
+}
+
+/* ---------- construction des séances ---------- */
+// Répétition incrémentale : un fait fragile toutes les deux questions sûres
+function interleave(known, hard) {
+  known = shuffle(known.slice()); hard = shuffle(hard.slice());
+  const out = [];
+  while (known.length || hard.length) {
+    if (known.length) out.push(known.shift());
+    if (known.length) out.push(known.shift());
+    if (hard.length) out.push(hard.shift());
+  }
+  return out;
+}
+function buildAdaptive(st, now = Date.now()) {
+  const { max, len } = st.settings;
+  const keys = factKeys(max);
+  const seen = keys.filter(k => seenF(st, k));
+  const unseen = keys.filter(k => !seenF(st, k)).sort((x, y) => difficulty(x) - difficulty(y));
+  const due = seen.filter(k => st.facts[k].due <= now).sort((x, y) => weakScore(st, y) - weakScore(st, x));
+  let chosen = due.slice(0, len);
+  const maxNew = seen.length ? Math.max(3, Math.round(len * 0.35)) : len;
+  chosen = chosen.concat(unseen.slice(0, Math.max(0, Math.min(maxNew, len - chosen.length))));
+  if (chosen.length < len) {
+    const rest = seen.filter(k => !chosen.includes(k)).sort((x, y) => st.facts[x].due - st.facts[y].due);
+    chosen = chosen.concat(rest.slice(0, len - chosen.length));
+  }
+  if (chosen.length < len) chosen = chosen.concat(unseen.filter(k => !chosen.includes(k)).slice(0, len - chosen.length));
+  const hard = chosen.filter(k => !seenF(st, k) || st.facts[k].box <= 1);
+  const known = chosen.filter(k => !hard.includes(k));
+  return interleave(known, hard);
+}
+function buildTable(st, n) {
+  const r = [];
+  for (let m = 2; m <= st.settings.max; m++) r.push(fkey(n, m));
+  return shuffle(r);
+}
+function buildWeak(st) {
+  const w = weakFacts(st, 10);
+  if (!w.length) return [];
+  const a = shuffle(w.slice()), b = shuffle(w.slice());
+  if (b.length > 1 && b[0] === a[a.length - 1]) b.push(b.shift());
+  return a.concat(b);
+}
+function buildFamily(st, now = Date.now()) {
+  const keys = factKeys(st.settings.max).filter(k => { const [a, b] = fparse(k); return a !== 2 && a !== 10 && b !== 10; });
+  const prio = keys.filter(k => isWeak(st, k) || (seenF(st, k) && st.facts[k].due <= now));
+  let chosen = shuffle(prio).slice(0, 4);
+  chosen = chosen.concat(shuffle(keys.filter(k => !chosen.includes(k))).slice(0, 6 - chosen.length));
+  const per = chosen.map(k => ({ k, forms: shuffle(['mul', pick(['missL', 'missR']), 'div']) }));
+  const out = [];
+  for (let r = 0; r < 3; r++) shuffle(per).forEach(p => out.push({ k: p.k, form: p.forms[r] }));
+  for (let i = 1; i < out.length - 1; i++) if (out[i].k === out[i - 1].k) [out[i], out[i + 1]] = [out[i + 1], out[i]];
+  return out;
+}
+
+/* ---------- stratégies par fait ---------- */
+function strategy(x, y) {
+  const a = Math.min(x, y), b = Math.max(x, y), p = a * b;
+  const other = t => (a === t ? b : a);
+  const r = (title, line) => {
+    const tail = F(p);
+    const hint = line.endsWith(tail) ? line.slice(0, line.length - tail.length) + '?' : '';
+    return { title, line, hint };
+  };
+  if (a === 10 || b === 10) { const n = other(10); return r('×10 : on ajoute un zéro', `${n} → ${F(p)}`); }
+  if (a === 2) return r('Le double', `${b} + ${b} = ${F(p)}`);
+  if (a === 5 || b === 5) { const n = other(5); return r('×5 : la moitié de ×10', `${n} × 10 = ${F(n * 10)}, moitié : ${F(p)}`); }
+  if (b === 11 && a <= 9) return r('×11 : le chiffre répété', `${a} et ${a} : ${p}`);
+  if (a === 9 || b === 9) { const n = other(9); return r('×9 : dix fois, moins une fois', `${F(n * 10)} − ${n} = ${F(p)}`); }
+  if (a === 4 || b === 4) { const n = other(4); return r('×4 : le double du double', `${n} → ${2 * n} → ${F(p)}`); }
+  if (a === 3) return r('×3 : le double, plus une fois', `${2 * b} + ${b} = ${F(p)}`);
+  if (a === b) {
+    if (a <= 12) return r('Un carré, par cœur', `${a}${sup(2)} = ${p}, appui pour ${a - 1} × ${a + 1} = ${p - 1}`);
+    const u = a - 10;
+    return r('Un carré', `(10 + ${u})${sup(2)} = 100 + ${20 * u} + ${u * u} = ${F(p)}`);
+  }
+  if (a === 12 || b === 12) { const n = other(12); return r('×12 : dix fois, plus deux fois', `${F(n * 10)} + ${2 * n} = ${F(p)}`); }
+  if (a === 20 || b === 20) { const n = other(20); return r('×20 : le double, puis ×10', `${2 * n} → ${F(p)}`); }
+  if (a === 15 || b === 15) { const n = other(15); return r('×15 : dix fois, plus la moitié', `${F(10 * n)} + ${F(5 * n)} = ${F(p)}`); }
+  if (a === 19 || b === 19) { const n = other(19); return r('×19 : vingt fois, moins une fois', `${F(20 * n)} − ${n} = ${F(p)}`); }
+  if (a >= 11 && b >= 11) {
+    const u = a - 10, v = b - 10, s = b + u;
+    return r('Entre 11 et 19', `${b} + ${u} = ${s} → ${s * 10}, puis ${u} × ${v} = ${u * v} → ${F(p)}`);
+  }
+  if (b >= 13) { const u = b - 10; return r(`${b} = 10 + ${u}`, `${10 * a} + ${u * a} = ${F(p)}`); }
+  if (b - a === 2) { const m = a + 1; return r('Les voisins d’un carré', `${m}${sup(2)} − 1 = ${m * m} − 1 = ${p}`); }
+  if (a === 6) return r('×6 : cinq fois, plus une fois', `${5 * b} + ${b} = ${p}`);
+  if (a === 7 && b === 8) return r('5, 6, 7, 8', '56 = 7 × 8');
+  if (a === 8 || b === 8) { const n = other(8); return r('×8 : trois doublements', `${n} → ${2 * n} → ${4 * n} → ${p}`); }
+  if (b === 11) return r('×11 : dix fois, plus une fois', `${10 * a} + ${a} = ${F(p)}`);
+  return r('À retenir', `${a} × ${b} = ${F(p)}`);
+}
+
+/* ---------- leçons ---------- */
+function anchorKeys(t, max) {
+  if (t > max) return [];
+  const r = [];
+  for (let n = 2; n <= max; n++) r.push(fkey(t, n));
+  return r;
+}
+const LESSONS = [
+  {
+    id: 'grille', title: 'Lire la grille', sub: 'Moins de faits qu’il n’y paraît',
+    body: max => {
+      const m = max - 1, uniq = (m * (m + 1)) / 2;
+      let h = 0; for (let n = 2; n <= max; n++) if (![2, 5, 10].includes(n)) h++;
+      return [
+        '7 × 8 et 8 × 7 sont le même fait : l’ordre des facteurs ne change pas le produit. La grille est symétrique par rapport à sa diagonale.',
+        `De 2 à ${max}, elle compte ${m * m} cases, mais seulement ${uniq} faits distincts. Une fois ×2, ×5 et ×10 acquis, qui sont des règles plus que des faits, il en reste ${(h * (h + 1)) / 2} à mémoriser vraiment.`,
+        '×1 ne change rien et ×0 donne toujours 0 : ce sont des règles, pas des faits à apprendre.',
+        'Les leçons suivent cet ordre : d’abord des faits d’appui, puis des stratégies qui en déduisent les autres. La mémoire vient ensuite, par la pratique espacée.',
+      ];
+    },
+    ex: [['8 × 7', '= 7 × 8', '= 56']], keys: () => [],
+  },
+  {
+    id: 'x10', anchor: 10, title: '×10', sub: 'On ajoute un zéro',
+    body: () => ['Multiplier par 10 décale chaque chiffre d’un rang : 7 devient 70. C’est le premier point d’appui, car beaucoup d’autres tables s’y ramènent : ×5, ×9, ×11, ×12.'],
+    ex: [['10 × 7', '= 70'], ['10 × 12', '= 120']], keys: max => anchorKeys(10, max),
+  },
+  {
+    id: 'x2', anchor: 2, title: '×2 : les doubles', sub: 'Ajouter le nombre à lui-même',
+    body: () => ['2 × n, c’est n + n. Les doubles servent ensuite de base à ×4 et ×8 : il suffit de doubler encore.'],
+    ex: [['2 × 8', '8 + 8', '= 16'], ['2 × 17', '17 + 17', '= 34']], keys: max => anchorKeys(2, max),
+  },
+  {
+    id: 'x5', anchor: 5, title: '×5 : la moitié de ×10', sub: 'Dix fois, puis la moitié',
+    body: () => ['5 est la moitié de 10. Pour 5 × n, calcule 10 × n, puis prends la moitié. Les résultats finissent toujours par 0 ou par 5.'],
+    ex: [['5 × 7', '10 × 7 = 70', 'moitié : 35'], ['5 × 12', '10 × 12 = 120', 'moitié : 60']], keys: max => anchorKeys(5, max),
+  },
+  {
+    id: 'x4', anchor: 4, title: '×4 : le double du double', sub: 'Doubler deux fois',
+    body: () => ['4 = 2 × 2. Pour 4 × n, double n, puis double encore le résultat.'],
+    ex: [['4 × 7', '7 → 14', '14 → 28'], ['4 × 12', '12 → 24', '24 → 48']], keys: max => anchorKeys(4, max),
+  },
+  {
+    id: 'x9', anchor: 9, title: '×9 : dix fois, moins une fois', sub: '10 × n − n',
+    body: () => ['9 × n = 10 × n − n : on calcule dix fois, puis on retire une fois.', 'Jusqu’à 9 × 10, deux contrôles rapides : le chiffre des dizaines vaut n − 1, et les deux chiffres font 9 ensemble (63 : 6 + 3).'],
+    ex: [['9 × 7', '10 × 7 = 70', '70 − 7 = 63', 'contrôle : 6 + 3 = 9'], ['9 × 12', '10 × 12 = 120', '120 − 12 = 108']], keys: max => anchorKeys(9, max),
+  },
+  {
+    id: 'x3', anchor: 3, title: '×3 : le double, plus une fois', sub: '2 × n + n',
+    body: () => ['3 × n = 2 × n + n. Le double est déjà acquis : il reste une petite addition.'],
+    ex: [['3 × 8', '2 × 8 = 16', '16 + 8 = 24'], ['3 × 7', '14 + 7', '= 21']], keys: max => anchorKeys(3, max),
+  },
+  {
+    id: 'carres', title: 'Les carrés', sub: 'Des points d’appui pour leurs voisins',
+    body: () => ['Les carrés (n × n) sont seuls sur la diagonale : ils n’ont pas de jumeau, il faut les connaître par cœur.', 'Ils servent ensuite d’appui à leurs voisins : (n − 1) × (n + 1) = n² − 1.'],
+    ex: [['6 × 8', '7² = 49', '49 − 1 = 48'], ['7 × 9', '8² = 64', '64 − 1 = 63']],
+    keys: max => { const r = []; for (let n = 2; n <= max; n++) r.push(fkey(n, n)); return r; },
+  },
+  {
+    id: 'x6', anchor: 6, title: '×6 : cinq fois, plus une fois', sub: '5 × n + n',
+    body: () => ['6 × n = 5 × n + n.', 'Pour les nombres pairs jusqu’à 8 : le résultat finit par le nombre lui-même, et sa dizaine en est la moitié. 6 × 8 finit par 8, avec 4 dizaines : 48.'],
+    ex: [['6 × 7', '5 × 7 = 35', '35 + 7 = 42'], ['6 × 8', 'finit par 8, moitié de 8 : 4', '= 48']], keys: max => anchorKeys(6, max),
+  },
+  {
+    id: 'x8', anchor: 8, title: '×8 : trois doublements', sub: 'Ou 10 × n − 2 × n',
+    body: () => ['8 = 2 × 2 × 2 : double trois fois de suite. Autre chemin : dix fois, moins deux fois.'],
+    ex: [['8 × 7', '7 → 14 → 28 → 56'], ['8 × 12', '120 − 24', '= 96']], keys: max => anchorKeys(8, max),
+  },
+  {
+    id: 'x7', anchor: 7, title: '×7 : déjà presque acquise', sub: 'Tout se déduit des autres tables',
+    body: () => ['Grâce à la commutativité, la table de 7 est déjà couverte : 7 × 6 se lit 6 × 7, 7 × 9 se lit 9 × 7, et ainsi de suite.', 'Restent deux faits à fixer : 7 × 7 = 49, un carré, et 7 × 8 = 56, qui a sa comptine : 5, 6, 7, 8.'],
+    ex: [['7 × 8', '5, 6, 7, 8', '56 = 7 × 8'], ['7 × 6', '= 6 × 7', '35 + 7 = 42']], keys: max => anchorKeys(7, max),
+  },
+  {
+    id: 'x11', anchor: 11, min: 11, title: '×11', sub: 'Jusqu’à 9 : le chiffre répété',
+    body: () => ['11 × n = 10 × n + n. Jusqu’à 9, le résultat répète le chiffre : 11 × 7 = 77. Au-delà, on additionne : 11 × 12 = 120 + 12 = 132.'],
+    ex: [['11 × 8', '= 88'], ['11 × 12', '120 + 12', '= 132']], keys: max => anchorKeys(11, max),
+  },
+  {
+    id: 'x12', anchor: 12, min: 12, title: '×12 : dix fois, plus deux fois', sub: '10 × n + 2 × n',
+    body: () => ['12 = 10 + 2. On ajoute dix fois et deux fois, deux tables déjà sûres.'],
+    ex: [['12 × 7', '70 + 14', '= 84'], ['12 × 12', '120 + 24', '= 144']], keys: max => anchorKeys(12, max),
+  },
+  {
+    id: 'ados', min: 13, title: 'De 13 à 19, fois un chiffre', sub: 'Dix fois, plus le reste',
+    body: () => ['Découpe le grand facteur : 14 = 10 + 4. Alors 14 × 7 = 70 + 28 = 98. C’est le même découpage qu’en calcul mental pour les grandes multiplications.'],
+    ex: [['14 × 7', '10 × 7 + 4 × 7', '70 + 28 = 98'], ['17 × 6', '60 + 42', '= 102']],
+    keys: max => { const r = []; for (let k = 13; k <= max; k++) for (let n = 2; n <= 9; n++) r.push(fkey(k, n)); return r; },
+  },
+  {
+    id: 'ados2', min: 13, title: 'Entre deux nombres de 11 à 19', sub: 'Une addition, puis un petit produit',
+    body: () => ['Pour 13 × 14 : ajoute à 14 les unités de 13 → 17, multiplie par 10 → 170, puis ajoute le produit des unités, 3 × 4 = 12. Résultat : 182.', 'La règle marche pour tous les nombres de 11 à 19.'],
+    ex: [['13 × 14', '14 + 3 = 17 → 170', '3 × 4 = 12', '170 + 12 = 182'], ['16 × 18', '18 + 6 = 24 → 240', '6 × 8 = 48', '240 + 48 = 288']],
+    keys: max => { const r = [], top = Math.min(max, 19); for (let a = 11; a <= top; a++) for (let b = Math.max(a, 13); b <= top; b++) r.push(fkey(a, b)); return r; },
+  },
+  {
+    id: 'x15', min: 15, title: '×15, ×19 et ×20', sub: 'Trois raccourcis',
+    body: () => ['15 × n : dix fois, plus la moitié de dix fois.', '19 × n : vingt fois, moins une fois.', '20 × n : le double, puis ×10.'],
+    ex: [['15 × 6', '60 + 30', '= 90'], ['19 × 7', '140 − 7', '= 133'], ['20 × 8', '16 → 160']],
+    keys: max => anchorKeys(15, max).concat(anchorKeys(19, max), anchorKeys(20, max)),
+  },
+];
+const lessonsFor = max => LESSONS.filter(l => !l.min || max >= l.min);
+const lessonKeys = (L, max) => [...new Set(L.keys(max))];
+
+/* ================= Calcul mental ================= */
+const CATS = [
+  { id: 'pow', name: 'Puissances', ex: '17², 2¹², 6³' },
+  { id: 'mul', name: 'Grandes multiplications', ex: '47 × 6, 48 × 52' },
+  { id: 'add', name: 'Additions', ex: '478 + 365' },
+  { id: 'sub', name: 'Soustractions', ex: '1003 − 478' },
+  { id: 'mod', name: 'Modulo', ex: '1234 mod 7' },
+  { id: 'mix', name: 'Mélange', ex: 'Les cinq, au hasard' },
+];
+
+function places(n) {
+  const s = String(n), out = [];
+  for (let i = 0; i < s.length; i++) { const v = +s[i] * 10 ** (s.length - 1 - i); if (v) out.push(v); }
+  return out;
+}
+// n juste en dessous d’un nombre rond → [rond, écart]
+function compUp(n) {
+  if (n >= 100 && n % 100 >= 95) return [n + (100 - (n % 100)), 100 - (n % 100)];
+  if (n >= 10 && n % 10 >= 8) return [n + (10 - (n % 10)), 10 - (n % 10)];
+  return null;
+}
+
+/* puissances */
+function squareSteps(n) {
+  const p = n * n;
+  if (n % 10 === 5 && n > 5) { const t = (n - 5) / 10; return { tip: 'Finit par 5 : n × (n + 1), puis 25', steps: [`${t} × ${t + 1} = ${t * (t + 1)}`, `on écrit 25 derrière : ${F(p)}`] }; }
+  if (n <= 12) return { tip: 'Un carré à connaître', steps: [`${n} × ${n} = ${p}`] };
+  if (n % 10 === 0) { const t = n / 10; return { tip: 'Dizaine ronde', steps: [`${t}${sup(2)} = ${t * t}`, `deux zéros : ${F(p)}`] }; }
+  if (n > 40 && n < 60) {
+    const d = n - 50, s = d > 0 ? '+' : '−', ad = Math.abs(d);
+    return { tip: 'Autour de 50 : 2500 ± 100d + d²', steps: [`(50 ${s} ${ad})${sup(2)}`, `2500 ${s} ${100 * ad} + ${ad * ad} = ${F(p)}`] };
+  }
+  const u = n % 10, T = n - u;
+  if (u <= 5) return { tip: '(a + b)² = a² + 2ab + b²', steps: [`(${T} + ${u})${sup(2)}`, `${F(T * T)} + ${F(2 * T * u)} + ${u * u} = ${F(p)}`] };
+  const N = T + 10, d = N - n;
+  return { tip: '(a − b)² = a² − 2ab + b²', steps: [`(${N} − ${d})${sup(2)}`, `${F(N * N)} − ${F(2 * N * d)} + ${d * d} = ${F(p)}`] };
+}
+function genPow(lv) {
+  const kinds = lv === 1 ? [['sq', 2, 15], ['sq', 2, 15], ['p2', 2, 10], ['cube', 2, 5]]
+    : lv === 2 ? [['sq', 11, 30], ['sq', 11, 30], ['cube', 2, 10], ['p2', 8, 16], ['p3', 2, 6], ['p5', 2, 5]]
+      : [['sq', 26, 99], ['sq5', 1, 9], ['cube', 6, 15], ['p2', 12, 20], ['p3', 4, 8], ['p7', 2, 4]];
+  const [kind, lo, hi] = pick(kinds);
+  if (kind === 'sq' || kind === 'sq5') {
+    const n = kind === 'sq5' ? 10 * rnd(lo, hi) + 5 : rnd(lo, hi);
+    return { q: `${n}<sup>2</sup>`, plain: `${n}${sup(2)}`, ans: n * n, ...squareSteps(n) };
+  }
+  if (kind === 'cube') {
+    const n = rnd(lo, hi), s = n * n, p = s * n;
+    const steps = [`${n}${sup(2)} = ${s}`];
+    steps.push(n > 10 ? `${s} × ${n} = ${F(s * 10)} + ${F(s * (n - 10))} = ${F(p)}` : `${s} × ${n} = ${F(p)}`);
+    return { q: `${n}<sup>3</sup>`, plain: `${n}${sup(3)}`, ans: p, tip: 'n³ = n² × n', steps };
+  }
+  const base = { p2: 2, p3: 3, p5: 5, p7: 7 }[kind], e = rnd(lo, hi), p = base ** e;
+  let tip, steps;
+  if (base === 2 && e > 10) {
+    const m = 2 ** (e - 10);
+    tip = '2¹⁰ = 1024 comme appui';
+    steps = [`2${sup(e)} = 2${sup(10)} × 2${sup(e - 10)}`, `1024 × ${F(m)} = ${F(1000 * m)} + ${F(24 * m)} = ${F(p)}`];
+  } else if (base === 5) {
+    tip = '5ⁿ = 10ⁿ ÷ 2ⁿ';
+    steps = [`10${sup(e)} ÷ 2${sup(e)}`, `${F(10 ** e)} ÷ ${2 ** e} = ${F(p)}`];
+  } else {
+    tip = base === 2 ? 'Doubler à chaque fois' : `Multiplier par ${base} à chaque fois`;
+    const chain = []; for (let i = 1; i <= e; i++) chain.push(F(base ** i));
+    steps = [chain.join(' → ')];
+  }
+  return { q: `${base}<sup>${e}</sup>`, plain: `${base}${sup(e)}`, ans: p, tip, steps };
+}
+
+/* grandes multiplications */
+function mulSteps(a, b) {
+  const p = a * b, lo = Math.min(a, b), hi = Math.max(a, b);
+  if (lo === 11 && hi >= 12 && hi <= 99) {
+    const t = Math.floor(hi / 10), u = hi % 10, s = t + u;
+    return { tip: '×11 : la somme des chiffres au milieu', steps: [`${t} + ${u} = ${s}`, s >= 10 ? `${t} | ${s} | ${u}, avec retenue : ${F(p)}` : `${t} | ${s} | ${u} : ${F(p)}`] };
+  }
+  const n25 = a === 25 ? b : b === 25 ? a : null;
+  if (n25 !== null && n25 % 4 === 0) return { tip: '×25 = ×100 ÷ 4', steps: [`${n25} ÷ 4 = ${n25 / 4}`, `${n25 / 4} × 100 = ${F(p)}`] };
+  const n125 = a === 125 ? b : b === 125 ? a : null;
+  if (n125 !== null && n125 % 8 === 0) return { tip: '×125 = ×1000 ÷ 8', steps: [`${n125} ÷ 8 = ${n125 / 8}`, `${n125 / 8} × 1000 = ${F(p)}`] };
+  const n5 = a === 5 ? b : b === 5 ? a : null;
+  if (n5 !== null) return { tip: '×5 = ×10 ÷ 2', steps: [`${n5} × 10 = ${F(n5 * 10)}`, `moitié : ${F(p)}`] };
+  if ((a + b) % 2 === 0 && a !== b) {
+    const m = (a + b) / 2, d = Math.abs(a - b) / 2;
+    if (m % 10 === 0 && d <= 9) return { tip: '(m − d)(m + d) = m² − d²', steps: [`(${m} − ${d}) × (${m} + ${d})`, `${F(m * m)} − ${d * d} = ${F(p)}`] };
+  }
+  for (const [f, n] of [[hi, lo], [lo, hi]]) {
+    if (f < 18) continue;
+    const R = f >= 95 ? Math.ceil(f / 100) * 100 : Math.ceil(f / 10) * 10, d = R - f;
+    if (d >= 1 && d <= 2) return { tip: 'Arrondir, puis corriger', steps: [`${f} = ${R} − ${d}`, `${F(n * R)} − ${F(n * d)} = ${F(p)}`] };
+  }
+  for (const [f, n] of [[hi, lo], [lo, hi]]) {
+    const R = f >= 100 ? Math.floor(f / 100) * 100 : Math.floor(f / 10) * 10, d = f - R;
+    if (f >= 50 && d >= 1 && d <= 2 && R % 50 === 0) return { tip: 'Arrondir, puis corriger', steps: [`${f} = ${R} + ${d}`, `${F(n * R)} + ${F(n * d)} = ${F(p)}`] };
+  }
+  if (lo < 10) {
+    const parts = places(hi);
+    return { tip: 'Découper le grand facteur', steps: [`${parts.map(x => `${F(x)} × ${lo}`).join(' + ')}`, `${parts.map(x => F(x * lo)).join(' + ')} = ${F(p)}`] };
+  }
+  const T = lo - (lo % 10), U = lo % 10;
+  if (!U) return { tip: 'Multiplier, puis ×10', steps: [`${hi} × ${T / 10} = ${F(hi * (T / 10))}`, `× 10 : ${F(p)}`] };
+  return { tip: 'Découper un facteur', steps: [`${hi} × ${T} + ${hi} × ${U}`, `${F(hi * T)} + ${F(hi * U)} = ${F(p)}`] };
+}
+function genMul(lv) {
+  let a, b;
+  const r = Math.random();
+  if (lv === 1) {
+    if (r < 0.15) { a = rnd(12, 99); b = 5; }
+    else if (r < 0.3) { a = rnd(12, 99); b = 11; }
+    else { a = rnd(12, 99); b = rnd(3, 9); }
+  } else if (lv === 2) {
+    if (r < 0.15) { a = rnd(12, 99); b = 11; }
+    else if (r < 0.3) { a = 4 * rnd(3, 30); b = 25; }
+    else if (r < 0.45) { const m = pick([20, 30, 40, 50, 60]), d = rnd(1, 5); a = m - d; b = m + d; }
+    else if (r < 0.7) { a = rnd(101, 999); b = rnd(3, 9); }
+    else { a = rnd(12, 49); b = rnd(12, 29); }
+  } else {
+    if (r < 0.12) { const m = pick([30, 40, 50, 60, 70, 80, 90]), d = rnd(1, 9); a = m - d; b = m + d; }
+    else if (r < 0.24) { b = pick([99, 101, 98, 49, 51, 19, 29]); a = rnd(13, 89); }
+    else if (r < 0.32) { a = 4 * rnd(11, 60); b = 25; }
+    else if (r < 0.4) { a = 8 * rnd(3, 30); b = 125; }
+    else { a = rnd(23, 99); b = rnd(13, 99); }
+  }
+  if (Math.random() < 0.5) [a, b] = [b, a];
+  return { q: `${F(a)} × ${F(b)}`, plain: `${F(a)} × ${F(b)}`, ans: a * b, ...mulSteps(a, b) };
+}
+
+/* additions */
+function addSteps(a, b) {
+  const c = compUp(b);
+  if (c) {
+    const [R, d] = c;
+    return { tip: 'Compensation', steps: [`${F(b)} = ${F(R)} − ${d}`, `${F(a)} + ${F(R)} = ${F(a + R)}`, `${F(a + R)} − ${d} = ${F(a + b)}`] };
+  }
+  let acc = a; const steps = [];
+  for (const p of places(b)) { steps.push(`${F(acc)} + ${F(p)} = ${F(acc + p)}`); acc += p; }
+  return { tip: 'De gauche à droite', steps };
+}
+function genAdd(lv) {
+  if (lv === 3 && Math.random() < 0.4) {
+    const a = rnd(101, 699), b = rnd(101, 699), c = rnd(101, 699);
+    return { q: `${a} + ${b} + ${c}`, plain: `${a} + ${b} + ${c}`, ans: a + b + c, tip: 'Deux à deux', steps: [`${a} + ${b} = ${F(a + b)}`, `${F(a + b)} + ${c} = ${F(a + b + c)}`] };
+  }
+  const [lo, hi] = lv === 1 ? [12, 89] : lv === 2 ? [101, 899] : [1001, 8999];
+  const a = rnd(lo, hi);
+  let b = rnd(lv === 3 ? 101 : lo, hi);
+  if (Math.random() < 0.2) b = lv === 1 ? 10 * rnd(2, 8) + pick([8, 9]) : lv === 2 ? 100 * rnd(1, 7) + pick([97, 98, 99]) : 1000 * rnd(1, 7) + pick([995, 998, 999]);
+  return { q: `${F(a)} + ${F(b)}`, plain: `${F(a)} + ${F(b)}`, ans: a + b, ...addSteps(a, b) };
+}
+
+/* soustractions */
+function subSteps(a, b) {
+  const d = a - b, c = compUp(b);
+  if (c) {
+    const [R, k] = c;
+    if (R <= a) return { tip: 'Compensation', steps: [`${F(b)} = ${F(R)} − ${k}`, `${F(a)} − ${F(R)} = ${F(a - R)}`, `${F(a - R)} + ${k} = ${F(d)}`] };
+  }
+  if (a >= 100 && a % 100 <= 5 && b % 100 >= 50) {
+    const R1 = Math.ceil(b / 100) * 100;
+    return { tip: 'Compter en avançant', steps: [`${F(b)} → ${F(R1)} : + ${R1 - b}`, `${F(R1)} → ${F(a)} : + ${F(a - R1)}`, `${R1 - b} + ${F(a - R1)} = ${F(d)}`] };
+  }
+  let acc = a; const steps = [];
+  for (const p of places(b)) { steps.push(`${F(acc)} − ${F(p)} = ${F(acc - p)}`); acc -= p; }
+  return { tip: 'Retirer par morceaux', steps };
+}
+function genSub(lv) {
+  let a, b;
+  const r = Math.random();
+  if (r < 0.2) {
+    const R = lv === 1 ? 10 * rnd(2, 7) : lv === 2 ? 100 * rnd(2, 7) : 1000 * rnd(1, 7);
+    b = R - pick(lv === 1 ? [1, 2] : [1, 2, 3]);
+    a = b + rnd(lv === 1 ? 5 : 30, lv === 1 ? 30 : lv === 2 ? 300 : 2500);
+  } else if (r < 0.35 && lv > 1) {
+    if (lv === 2) { const H = rnd(3, 9); a = H * 100 + rnd(0, 5); b = 100 * rnd(1, H - 1) + rnd(50, 94); }
+    else { const H = rnd(2, 9); a = H * 1000 + rnd(0, 5); b = 100 * rnd(5, H * 10 - 1) + rnd(50, 94); }
+  } else if (lv === 1) { a = rnd(30, 99); b = rnd(11, a - 5); }
+  else if (lv === 2) { a = rnd(200, 999); b = rnd(101, a - 10); }
+  else { a = rnd(1000, 9999); b = rnd(100, a - 10); }
+  return { q: `${F(a)} − ${F(b)}`, plain: `${F(a)} − ${F(b)}`, ans: a - b, ...subSteps(a, b) };
+}
+
+/* modulo */
+function chunkSteps(a, b) {
+  const steps = [];
+  let x = a, guard = 0;
+  while (x >= b && guard++ < 6) {
+    let m = b; while (m * 10 <= x) m *= 10;
+    const sub = Math.floor(x / m) * m;
+    steps.push(`${F(x)} − ${b} × ${F(sub / b)} = ${F(x - sub)}`);
+    x -= sub;
+  }
+  return steps;
+}
+function modSteps(a, b, r) {
+  if (a < 0) {
+    const q = Math.floor(a / b);
+    return { tip: `Négatif : on veut 0 ≤ r < ${b}`, steps: [`${F(a)} = ${b} × (${F(q)}) + ${r}`, `Python donne ${r} ; C, Java et JavaScript donnent ${F(a % b)}`] };
+  }
+  if (b === 10 || b === 100) return { tip: 'Les derniers chiffres', steps: [`${b === 10 ? 'dernier chiffre' : 'deux derniers chiffres'} : ${r}`] };
+  if (b === 2) return { tip: 'Pair ou impair', steps: [`${a} est ${r ? 'impair' : 'pair'} : ${r}`] };
+  if (b === 3 || b === 9) {
+    const ds = String(a).split('').map(Number), s = ds.reduce((x, y) => x + y, 0);
+    return { tip: 'Somme des chiffres', steps: [`${ds.join(' + ')} = ${s}`, `${s} mod ${b} = ${r}`] };
+  }
+  if (b === 11 && a >= 100) {
+    const ds = String(a).split('').map(Number).reverse();
+    let alt = 0, expr = '';
+    ds.forEach((d, i) => { alt += i % 2 ? -d : d; expr += i === 0 ? `${d}` : ` ${i % 2 ? '−' : '+'} ${d}`; });
+    return { tip: 'Somme alternée, depuis la droite', steps: [`${expr} = ${F(alt)}`, `${F(alt)} mod 11 = ${r}`] };
+  }
+  const keepK = { 4: 100, 8: 1000, 16: 10000, 5: 10, 25: 100 }[b];
+  if (keepK && a >= keepK) {
+    const rest = a % keepK, q = Math.floor(rest / b);
+    const what = keepK === 10 ? 'le dernier chiffre' : `les ${String(keepK).length - 1} derniers chiffres`;
+    return { tip: `${F(keepK)} est un multiple de ${b}`, steps: rest >= b ? [`on garde ${what} : ${F(rest)}`, `${F(rest)} = ${b} × ${F(q)} + ${r}`] : [`on garde ${what} : ${r}`] };
+  }
+  const q = Math.floor(a / b);
+  if (q <= 12) return { tip: 'Le multiple juste en dessous', steps: [`${b} × ${q} = ${F(b * q)}`, `${F(a)} − ${F(b * q)} = ${r}`] };
+  const bits = { 32: 5, 64: 6 }[b];
+  return { tip: bits ? `Binaire : les ${bits} derniers bits ; de tête : retirer des multiples ronds` : 'Retirer des multiples ronds', steps: chunkSteps(a, b) };
+}
+function genMod(lv) {
+  let a, b;
+  if (lv === 1) { b = pick([2, 3, 4, 5, 6, 7, 8, 9, 10, 10]); a = rnd(b + 1, 99); }
+  else if (lv === 2) { b = pick([3, 4, 6, 7, 8, 9, 11, 12, 16]); a = rnd(100, 999); }
+  else if (Math.random() < 0.15) { b = rnd(3, 12); a = -rnd(b + 1, 60); }
+  else {
+    b = pick([7, 8, 9, 11, 13, 16, 25, 32, 64, 100, 24, 60]);
+    a = [8, 9, 16, 25, 100].includes(b) ? rnd(10000, 99999) : rnd(1000, 9999);
+  }
+  const ans = ((a % b) + b) % b;
+  return { q: `${F(a)} mod ${b}`, plain: `${F(a)} mod ${b}`, ans, sub: a < 0 ? 'Convention mathématique, comme Python : résultat ≥ 0' : '', ...modSteps(a, b, ans) };
+}
+
+const GENS = { pow: genPow, mul: genMul, add: genAdd, sub: genSub, mod: genMod };
+function genMental(cat, lv) {
+  const c = cat === 'mix' ? pick(Object.keys(GENS)) : cat;
+  return { kind: 'mental', cat: c, lv, ...GENS[c](lv) };
+}
+function recordMental(st, cat, lv, ok, ms) {
+  const k = cat + ':' + lv;
+  const m = st.mental[k] || (st.mental[k] = { n: 0, ok: 0, t: 0 });
+  m.n++;
+  if (ok) { m.ok++; if (ms != null) m.t = m.t ? Math.round(m.t * 0.7 + Math.min(ms, 60000) * 0.3) : Math.round(ms); }
+}
+function weakestCat(st, lv) {
+  let worst = null;
+  for (const c of CATS) {
+    if (c.id === 'mix') continue;
+    const m = st.mental[c.id + ':' + lv];
+    if (!m || m.n < 8) continue;
+    const acc = m.ok / m.n;
+    if (acc < 0.9 && (!worst || acc < worst.acc)) worst = { id: c.id, acc };
+  }
+  return worst && worst.id;
+}
+
+const TIPS = {
+  pow: [
+    ['Carrés', '(a + b)² = a² + 2ab + b². 23² = 400 + 120 + 9 = 529.'],
+    ['Juste sous une dizaine', 'Passe par le haut : 48² = 50² − 2 × 50 × 2 + 2² = 2500 − 200 + 4 = 2304.'],
+    ['Finit par 5', 'n5² s’écrit n × (n + 1) suivi de 25. 35² : 3 × 4 = 12, donc 1225.'],
+    ['Autour de 50', '(50 + d)² = 2500 + 100d + d². 53² = 2500 + 300 + 9 = 2809.'],
+    ['Puissances de 2', 'Retiens 2¹⁰ = 1024, à peu près 10³. Puis 2¹⁶ = 65 536 et 2²⁰ = 1 048 576, à peu près un million.'],
+    ['Cubes et puissances de 5', 'n³ = n² × n. 5ⁿ = 10ⁿ ÷ 2ⁿ : 5⁴ = 10 000 ÷ 16 = 625.'],
+  ],
+  mul: [
+    ['Découper', '47 × 6 = 40 × 6 + 7 × 6 = 240 + 42 = 282.'],
+    ['Arrondir, puis corriger', '49 × 12 = 50 × 12 − 12 = 588. 99 × 37 = 3700 − 37 = 3663.'],
+    ['Symétrie autour d’un rond', '48 × 52 = 50² − 2² = 2496.'],
+    ['Diviseurs cachés', '×5 = ×10 ÷ 2, ×25 = ×100 ÷ 4, ×125 = ×1000 ÷ 8.'],
+    ['×11 sur deux chiffres', 'Écarte les chiffres et place leur somme au milieu : 53 × 11 = 583. Avec retenue : 58 × 11 = 638.'],
+  ],
+  add: [
+    ['De gauche à droite', '478 + 365 : 478 + 300 = 778, + 60 = 838, + 5 = 843. On garde un seul nombre en tête.'],
+    ['Compensation', '478 + 299 = 478 + 300 − 1 = 777.'],
+  ],
+  sub: [
+    ['Compensation', '732 − 298 = 732 − 300 + 2 = 434.'],
+    ['Compter en avançant', '1003 − 478 : de 478 à 500, + 22 ; de 500 à 1003, + 503. Total : 525.'],
+    ['Retirer par morceaux', '732 − 245 = 732 − 200 − 40 − 5 = 487.'],
+  ],
+  mod: [
+    ['Définition', 'a mod b est le reste de la division entière : a = b × q + r, avec 0 ≤ r < b.'],
+    ['Les derniers chiffres', 'Mod 10 : le dernier chiffre. Mod 100 : les deux derniers.'],
+    ['Puissances de 2', 'En binaire, mod 2ᵏ garde les k derniers bits. En décimal, mod 4 ne dépend que des 2 derniers chiffres, mod 8 des 3 derniers, mod 16 des 4 derniers.'],
+    ['Mod 3, mod 9, mod 11', 'Mod 3 et mod 9 : la somme des chiffres. Mod 11 : la somme alternée depuis la droite. 1234 mod 11 : 4 − 3 + 2 − 1 = 2.'],
+    ['Cas général', 'Retire des multiples ronds : 1234 mod 7 → 1234 − 700 = 534 → 534 − 490 = 44 → 44 − 42 = 2.'],
+    ['Nombres négatifs', 'En maths et en Python, −7 mod 3 = 2. En C, Java et JavaScript, -7 % 3 vaut -1 : le signe suit le dividende.'],
+  ],
+};
+TIPS.mix = [].concat(TIPS.pow.slice(0, 2), TIPS.mul.slice(0, 2), TIPS.add.slice(1), TIPS.sub.slice(0, 2), TIPS.mod.slice(4, 5));
+
+if (false) {
+  module.exports = {
+    F, sup, defaultState, migrate, fkey, fparse, factKeys, levelOf, recordFact, weakFacts, weakTables, tableStats, overview,
+    buildAdaptive, buildTable, buildWeak, buildFamily, strategy, LESSONS, lessonsFor, lessonKeys, CATS, genMental, GENS,
+    squareSteps, mulSteps, addSteps, subSteps, modSteps, recordMental, weakestCat, difficulty,
+  };
+}
+
+/* ================= PocketTables · interface ================= */
+let S;
+try { S = migrate(JSON.parse(localStorage.getItem(STORE_KEY))); } catch (e) { S = defaultState(); }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* stockage indisponible */ } }
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const SLOT = '§';
+const sec = ms => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const I = {
+  back: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  del: '<svg viewBox="0 0 24 24"><path d="M9 6h10.5a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5.5-6z"/><path d="M12 10l4 4M16 10l-4 4"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
+};
+const chev = `<span class="chev">${I.chev}</span>`;
+
+/* ---------- utilitaires d’animation ---------- */
+function anim(el, kf, dur, fill = 'none', easing = 'cubic-bezier(.2,.8,.2,1)') {
+  if (reduceMotion.matches) dur = Math.min(dur, 100);
+  return el.animate(kf, { duration: dur, easing, fill });
+}
+const shake = el => anim(el, [{ transform: 'translateX(0)' }, { transform: 'translateX(-9px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(2px)' }, { transform: 'none' }], 380, 'none', 'ease-out');
+const pop = el => anim(el, [{ transform: 'scale(1)' }, { transform: 'scale(1.07)' }, { transform: 'scale(1)' }], 260);
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t);
+  anim(t, [{ opacity: 0, transform: 'translate(-50%, 8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], 220);
+  setTimeout(() => anim(t, [{ opacity: 1 }, { opacity: 0 }], 200, 'forwards').finished.then(() => t.remove()), 2200);
+}
+
+/* ---------- thème ---------- */
+function applyTheme() {
+  const t = S.settings.theme, root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+  const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = bg; m.removeAttribute('media'); });
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+/* ---------- navigation ---------- */
+const stack = [];
+let navLock = 0;
+function go(name, params = {}, opts = {}) {
+  const now = performance.now();
+  if (!opts.replace && now - navLock < 350) return;
+  navLock = now;
+  const entry = { name, params };
+  if (opts.replace) { stack[stack.length - 1] = entry; history.replaceState({ d: stack.length }, ''); }
+  else { stack.push(entry); history.pushState({ d: stack.length }, ''); }
+  render(entry, opts.replace ? 'fade' : 'fwd');
+}
+function back() { if (stack.length > 1) history.back(); }
+addEventListener('popstate', () => {
+  closeSheet(true);
+  if (stack.length <= 1) return;
+  stack.pop();
+  render(stack[stack.length - 1], 'back');
+});
+function rerender() {
+  const cur = document.querySelector('.screen.cur');
+  if (!cur) return;
+  const top = cur.scrollTop;
+  render(stack[stack.length - 1], 'none');
+  const n = document.querySelector('.screen.cur'); if (n) n.scrollTop = top;
+}
+
+function render(entry, dir) {
+  const app = document.getElementById('app');
+  const old = app.querySelector('.screen.cur');
+  const el = document.createElement('section');
+  el.className = 'screen cur screen-' + entry.name;
+  app.appendChild(el);
+  VIEWS[entry.name](el, entry.params);
+  if (!old) return;
+  old.classList.remove('cur');
+  if (old._cleanup) old._cleanup();
+  old.setAttribute('aria-hidden', 'true');
+  const done = () => { old.remove(); el.style.zIndex = ''; };
+  if (dir === 'none') return done();
+  if (reduceMotion.matches || dir === 'fade') {
+    anim(el, [{ opacity: 0 }, { opacity: 1 }], 200);
+    return anim(old, [{ opacity: 1 }, { opacity: 0 }], 160, 'forwards').finished.then(done);
+  }
+  if (dir === 'fwd') {
+    el.style.zIndex = 2;
+    anim(el, [{ transform: 'translateX(100%)' }, { transform: 'none' }], 360);
+    anim(old, [{ transform: 'none', opacity: 1 }, { transform: 'translateX(-22%)', opacity: 0.5 }], 360, 'forwards').finished.then(done);
+  } else {
+    old.style.zIndex = 2;
+    anim(el, [{ transform: 'translateX(-22%)', opacity: 0.5 }, { transform: 'none', opacity: 1 }], 320);
+    anim(old, [{ transform: 'none' }, { transform: 'translateX(100%)' }], 320, 'forwards').finished.then(done);
+  }
+}
+const topBar = (right = '') => `<header class="top"><button class="icon" data-act="back" aria-label="Retour">${I.back}</button>${right}</header>`;
+
+/* ---------- feuilles ---------- */
+let sheet = null;
+function openSheet(html, mount) {
+  closeSheet(true);
+  const bd = document.createElement('div'); bd.className = 'backdrop';
+  const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true');
+  sh.innerHTML = `<div class="grab"></div>${html}`;
+  document.body.append(bd, sh);
+  anim(bd, [{ opacity: 0 }, { opacity: 1 }], 220);
+  anim(sh, [{ transform: 'translateY(100%)' }, { transform: 'none' }], 360);
+  bd.addEventListener('click', () => closeSheet());
+  sheet = { bd, sh };
+  if (mount) mount(sh);
+  requestAnimationFrame(() => { if (sh.scrollHeight <= sh.clientHeight + 1) sh.style.touchAction = 'none'; });
+  dragToClose(sh);
+  const f = sh.querySelector('button'); if (f && matchMedia('(hover: hover)').matches) f.focus({ preventScroll: true });
+}
+function closeSheet(instant) {
+  if (!sheet) return;
+  const { bd, sh } = sheet; sheet = null;
+  if (instant) { bd.remove(); sh.remove(); return; }
+  const cur = getComputedStyle(sh).transform;
+  anim(bd, [{ opacity: 1 }, { opacity: 0 }], 220, 'forwards').finished.then(() => bd.remove());
+  anim(sh, [{ transform: cur === 'none' ? 'none' : cur }, { transform: 'translateY(100%)' }], 260, 'forwards').finished.then(() => sh.remove());
+}
+function dragToClose(sh) {
+  let y0 = null, dy = 0;
+  sh.addEventListener('pointerdown', e => {
+    if (e.button || sh.scrollTop > 0 || e.target.closest('button, a, input, details')) return;
+    if (sh.style.touchAction !== 'none' && e.clientY - sh.getBoundingClientRect().top > 44) return;
+    y0 = e.clientY; dy = 0; sh.setPointerCapture(e.pointerId);
+  });
+  sh.addEventListener('pointermove', e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); sh.style.transform = `translateY(${dy}px)`; });
+  const end = () => {
+    if (y0 === null) return; y0 = null;
+    if (dy > 90) { closeSheet(); return; }
+    sh.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)'; sh.style.transform = '';
+    setTimeout(() => { sh.style.transition = ''; }, 260);
+  };
+  sh.addEventListener('pointerup', end); sh.addEventListener('pointercancel', end);
+}
+
+/* ---------- grille de maîtrise ---------- */
+let firstHome = true;
+function gridHTML(animate) {
+  const max = S.settings.max, n = max - 1;
+  let h = `<div class="hm${n > 12 ? ' dense' : ''}${animate ? ' wave' : ''}" style="--n:${n}" role="group" aria-label="Grille de maîtrise"><span></span>`;
+  for (let b = 2; b <= max; b++) h += `<span class="lab">${b}</span>`;
+  for (let a = 2; a <= max; a++) {
+    h += `<span class="lab">${a}</span>`;
+    for (let b = 2; b <= max; b++) {
+      const k = fkey(a, b), lv = levelOf(S, k);
+      h += `<button class="c l${lv}" data-k="${k}" style="--d:${a + b}" aria-label="${a} fois ${b} : ${LV_NAME[lv]}"></button>`;
+    }
+  }
+  return h + '</div>';
+}
+const legendHTML = () => `<div class="legend" aria-hidden="true"><span><i class="l0"></i>À revoir</span><span><i class="l1"></i>En cours</span><span><i class="l3"></i>Solide</span><span><i class="l4"></i>Réflexe</span></div>`;
+
+function factSheet(k) {
+  const [a, b] = fparse(k), f = S.facts[k], lv = levelOf(S, k), st = strategy(a, b);
+  let stats = 'Pas encore rencontré.';
+  if (f && f.n) {
+    const now = Date.now(), d = f.due - now;
+    const when = d <= 0 ? 'À revoir maintenant.' : d < 3e6 ? `Prochaine révision dans ${Math.max(1, Math.round(d / 6e4))} min.` : d < 828e5 ? `Prochaine révision dans ${Math.max(1, Math.round(d / 36e5))} h.` : `Prochaine révision dans ${Math.round(d / 864e5)} jours.`;
+    stats = `Vu ${f.n} fois, ${f.err} erreur${f.err > 1 ? 's' : ''}.${f.t ? ` Temps moyen ${sec(f.t)}.` : ''} ${when}`;
+  }
+  openSheet(`
+    <div class="fs-expr">${a} × ${b} = ${F(a * b)}</div>
+    <p class="fs-lv"><i class="l${lv}"></i>${LV_NAME[lv]}</p>
+    <p class="fs-tip"><span class="t">${st.title}</span><span class="m">${st.line}</span></p>
+    <p class="fs-stats">${stats}</p>
+    <div class="actions${a !== b ? ' two' : ''}"><button class="btn" data-table="${a}">Table de ${a}</button>${a !== b ? `<button class="btn" data-table="${b}">Table de ${b}</button>` : ''}</div>`,
+  sh => sh.addEventListener('click', e => {
+    const t = e.target.closest('[data-table]');
+    if (t) { closeSheet(true); go('session', { type: 'table', n: +t.dataset.table }); }
+  }));
+}
+
+/* ================= VUES ================= */
+const VIEWS = {};
+
+/* ---------- accueil ---------- */
+VIEWS.home = el => {
+  const o = overview(S);
+  let line;
+  if (!o.seen) line = `Ta grille de 2 à ${S.settings.max}. Elle se colore à chaque réponse : touche une case pour voir le fait et sa stratégie.`;
+  else line = `<b>${o.reflex}</b> fait${o.reflex > 1 ? 's' : ''} réflexe${o.reflex > 1 ? 's' : ''} sur ${o.total}${o.due ? `, <b>${o.due}</b> à revoir aujourd’hui` : ''}.`;
+  const tSub = o.due ? `${o.due} fait${o.due > 1 ? 's' : ''} à revoir` : !o.seen ? 'Commence par une leçon ou un bilan' : 'Apprendre et s’entraîner';
+  el.innerHTML = `<div class="inner">
+    <header class="top"><span class="wordmark">PocketTables</span><button class="icon" data-go="settings" aria-label="Réglages">${I.gear}</button></header>
+    <div class="hero">${gridHTML(firstHome && !reduceMotion.matches)}<p class="hero-line">${line}</p>${legendHTML()}</div>
+    <nav class="rows">
+      <button class="row" data-go="tables"><span class="row-t">Tables de multiplication</span><span class="row-s">${tSub}</span>${chev}</button>
+      <button class="row" data-go="mental"><span class="row-t">Calcul mental</span><span class="row-s">Puissances, grandes multiplications, modulo</span>${chev}</button>
+    </nav></div>`;
+  firstHome = false;
+};
+
+/* ---------- tables ---------- */
+VIEWS.tables = (el, p) => {
+  const o = overview(S);
+  const tab = p.tab || (o.seen ? 'train' : 'learn');
+  el.innerHTML = `<div class="inner">${topBar()}<h1 class="title">Tables</h1>
+    <div class="seg" style="--n:2" role="tablist"><i class="seg-ind"></i>
+      <button role="tab" data-tab="learn" aria-selected="${tab === 'learn'}">Apprendre</button>
+      <button role="tab" data-tab="train" aria-selected="${tab === 'train'}">S’entraîner</button></div>
+    <div class="tabs"><div class="tab" data-pane="learn"${tab !== 'learn' ? ' hidden' : ''}>${learnPane(o)}</div><div class="tab" data-pane="train"${tab !== 'train' ? ' hidden' : ''}>${trainPane(o)}</div></div></div>`;
+  const seg = el.querySelector('.seg');
+  syncSeg(seg);
+  const setTab = (t, swipeDir) => {
+    if (p.tab === t) return;
+    p.tab = t;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    syncSeg(seg);
+    el.querySelectorAll('.tab').forEach(pn => {
+      const on = pn.dataset.pane === t;
+      pn.hidden = !on;
+      if (on) anim(pn, [{ opacity: 0, transform: `translateX(${t === 'train' ? 24 : -24}px)` }, { opacity: 1, transform: 'none' }], 280);
+    });
+  };
+  p.tab = tab;
+  el.addEventListener('click', e => {
+    const tb = e.target.closest('[data-tab]'); if (tb) return setTab(tb.dataset.tab);
+    const m = e.target.closest('[data-method]'); if (m) return startMethod(m.dataset.method);
+  });
+  swipeTabs(el.querySelector('.tabs'), dir => setTab(dir < 0 ? 'train' : 'learn', true));
+};
+function syncSeg(seg) {
+  const btns = [...seg.querySelectorAll('button')];
+  const i = Math.max(0, btns.findIndex(b => b.getAttribute('aria-selected') === 'true'));
+  seg.querySelector('.seg-ind').style.transform = `translateX(${i * 100}%)`;
+}
+function swipeTabs(zone, cb) {
+  let x0 = null, y0 = 0;
+  zone.addEventListener('touchstart', e => { const t = e.touches[0]; if (t.clientX < 24) return; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+  zone.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) cb(dx);
+  }, { passive: true });
+}
+
+function learnPane(o) {
+  const max = S.settings.max;
+  let h = '';
+  const weak = weakFacts(S, 8), wt = weakTables(S);
+  if (weak.length) {
+    h += `<section class="weak"><h2 class="h2">À retravailler</h2><div class="chips">${weak.map(k => { const [a, b] = fparse(k); return `<button class="chip bad" data-k="${k}">${a} × ${b}</button>`; }).join('')}</div>`;
+    if (wt.length) h += `<p class="small muted">Tables les moins sûres : ${wt.map(t => `<button class="inline" data-table="${t.n}">${t.n}</button>`).join(', ')}.</p>`;
+    h += `<div class="actions"><button class="btn primary" data-method="weak">Réviser ces faits</button></div></section>`;
+  } else if (!o.seen) {
+    h += `<p class="intro">Suis les leçons dans l’ordre : chacune explique une stratégie, puis la fait pratiquer. Si tu connais déjà une bonne partie des tables, un bilan dira à l’app où tu en es.</p>`;
+  }
+  h += `<h2 class="h2">Leçons</h2><ol class="lessons">`;
+  lessonsFor(max).forEach((L, i) => {
+    const keys = lessonKeys(L, max);
+    const m = keys.length ? keys.reduce((s, k) => s + LV_VALUE[levelOf(S, k)], 0) / keys.length : null;
+    h += `<li><button class="row lesson" data-go="lesson" data-id="${L.id}"><span class="num">${i + 1}</span><span class="row-t">${L.title}</span><span class="row-s">${L.sub}</span>${m !== null ? `<span class="mbar" aria-hidden="true"><i style="width:${Math.round(m * 100)}%"></i></span>` : ''}${chev}</button></li>`;
+  });
+  h += `</ol><div class="actions"><button class="btn link" data-go="method">Pourquoi cette méthode</button></div>`;
+  return h;
+}
+
+function trainPane(o) {
+  const best = S.sprint[String(S.settings.max)];
+  const rows = [
+    { id: 'adaptive', t: 'Adaptatif', badge: 'Recommandé', s: o.seen ? 'Les faits à revoir, tes points faibles et quelques nouveaux, mélangés.' : 'Commence par les faits les plus simples, puis élargit.' },
+    o.unseen ? { id: 'diag', t: 'Bilan', s: `Chaque fait jamais vu, une fois, pour calibrer ta grille. ${o.unseen} restant${o.unseen > 1 ? 's' : ''}, tu peux t’arrêter quand tu veux.` } : null,
+    { id: 'table', t: 'Une table', s: 'Pratique ciblée sur une table, dans le désordre.' },
+    { id: 'family', t: 'Familles', s: '7 × 8, 7 × ? = 56, 56 ÷ 7 : chaque fait sous trois formes.' },
+    { id: 'weak', t: 'Points faibles', s: o.weak > 10 ? `Les 10 plus fragiles parmi tes ${o.weak} faits ratés ou lents, chacun deux fois.` : o.weak ? `${o.weak} fait${o.weak > 1 ? 's' : ''} raté${o.weak > 1 ? 's' : ''} ou lent${o.weak > 1 ? 's' : ''}, chacun deux fois.` : 'Aucun pour l’instant.', off: !o.weak },
+    { id: 'sprint', t: 'Sprint 60 s', s: 'Un maximum de bonnes réponses en une minute. À garder pour les faits déjà sûrs.', rec: best ? `Record : ${best}` : '' },
+  ].filter(Boolean);
+  return `<div class="rows" style="margin-top:18px">${rows.map(r => `<button class="row" data-method="${r.id}"${r.off ? ' disabled' : ''}><span class="row-t">${r.t}${r.badge ? `<span class="badge">${r.badge}</span>` : ''}</span><span class="row-s">${r.s}</span>${r.rec ? `<span class="rec">${r.rec}</span>` : ''}${chev}</button>`).join('')}</div>
+  <p class="small muted" style="margin-top:16px">Séances de ${S.settings.len} questions, tables de 2 à ${S.settings.max}. Modifiable dans les réglages.</p>`;
+}
+
+function startMethod(id) {
+  if (id === 'table') return tablePicker();
+  go('session', { type: id });
+}
+function tablePicker() {
+  const ts = tableStats(S);
+  openSheet(`<h3>Quelle table ?</h3><div class="pick">${ts.map(t => `<button data-n="${t.n}" aria-label="Table de ${t.n}"><b>${t.n}</b><span class="mbar"><i style="width:${Math.round(t.mastery * 100)}%"></i></span></button>`).join('')}</div>`,
+    sh => sh.addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) { closeSheet(true); go('session', { type: 'table', n: +b.dataset.n }); } }));
+}
+
+/* ---------- leçon ---------- */
+VIEWS.lesson = (el, p) => {
+  const max = S.settings.max, list = lessonsFor(max);
+  const i = Math.max(0, list.findIndex(l => l.id === p.id)), L = list[i], nextL = list[i + 1];
+  const keys = lessonKeys(L, max);
+  const disp = k => { const [a, b] = fparse(k); if (L.anchor && (a === L.anchor || b === L.anchor)) return `${L.anchor} × ${a === L.anchor ? b : a}`; return `${a} × ${b}`; };
+  const nq = Math.min(10, keys.length);
+  el.innerHTML = `<div class="inner">${topBar()}
+    <h1 class="title">${L.title}</h1>
+    <div class="prose">${L.body(max).map(t => `<p>${t}</p>`).join('')}</div>
+    ${L.ex.map(steps => `<div class="ex" role="button" tabindex="0" aria-label="Exemple : ${esc(steps[0])}, touche pour dérouler">${steps.map((s, j) => `<div class="ex-l${j ? ' hid' : ''}">${s}</div>`).join('')}<p class="ex-h">Touche pour dérouler</p></div>`).join('')}
+    ${keys.length ? `<h2 class="h2">Les faits de cette leçon</h2><div class="dots">${keys.map(k => `<button class="fact l${levelOf(S, k)}" data-k="${k}">${disp(k)}</button>`).join('')}</div>
+      <div class="actions"><button class="btn primary" data-act="practice">S’exercer</button></div>
+      <p class="small muted">${nq} questions. La stratégie reste affichée pendant la première moitié, puis disparaît.</p>` : ''}
+    ${nextL ? `<div class="actions"><button class="btn${keys.length ? '' : ' primary'}" data-act="next">Leçon suivante : ${nextL.title}</button></div>` : ''}
+  </div>`;
+  const reveal = ex => {
+    const h = ex.querySelector('.ex-l.hid');
+    if (!h) return;
+    h.classList.remove('hid');
+    anim(h, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], 260);
+    if (!ex.querySelector('.ex-l.hid')) ex.classList.add('done');
+  };
+  el.addEventListener('click', e => {
+    const ex = e.target.closest('.ex'); if (ex) return reveal(ex);
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'practice') go('session', { type: 'lesson', id: L.id });
+    if (a.dataset.act === 'next') go('lesson', { id: nextL.id }, { replace: true });
+  });
+  el.addEventListener('keydown', e => { const ex = e.target.closest('.ex'); if (ex && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); reveal(ex); } });
+};
+
+/* ---------- calcul mental ---------- */
+VIEWS.mental = el => {
+  const draw = () => {
+    const lv = S.settings.level, weak = weakestCat(S, lv);
+    el.querySelector('.cats').innerHTML = CATS.map(c => {
+      const m = c.id === 'mix' ? null : S.mental[c.id + ':' + lv];
+      const stat = m && m.n ? `${Math.round((m.ok / m.n) * 100)} % de réussite${m.t ? `, ${sec(m.t)} en moyenne` : ''}` : '';
+      return `<div class="mrow"><button class="row" data-cat="${c.id}"><span class="row-t">${c.name}${weak === c.id ? '<span class="flag">À travailler</span>' : ''}</span><span class="row-s mx">${c.ex}</span>${stat ? `<span class="row-s stat">${stat}</span>` : ''}${chev}</button><button class="icon tipbtn" data-tips="${c.id}" aria-label="Techniques : ${c.name}">${I.info}</button></div>`;
+    }).join('');
+  };
+  el.innerHTML = `<div class="inner">${topBar()}<h1 class="title">Calcul mental</h1>
+    <div class="seg" style="--n:3" role="tablist"><i class="seg-ind"></i>${[[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile']].map(([v, t]) => `<button role="tab" data-lv="${v}" aria-selected="${S.settings.level === v}">${t}</button>`).join('')}</div>
+    <div class="rows cats" style="margin-top:18px"></div>
+    <p class="small muted" style="margin-top:16px">Après une erreur, la décomposition s’affiche. Le bouton ⓘ présente les techniques de chaque type de calcul.</p></div>`;
+  draw(); syncSeg(el.querySelector('.seg'));
+  el.addEventListener('click', e => {
+    const l = e.target.closest('[data-lv]');
+    if (l) { S.settings.level = +l.dataset.lv; save(); el.querySelectorAll('[data-lv]').forEach(b => b.setAttribute('aria-selected', String(b === l))); syncSeg(el.querySelector('.seg')); draw(); return; }
+    const t = e.target.closest('[data-tips]'); if (t) return tipsSheet(t.dataset.tips);
+    const c = e.target.closest('[data-cat]'); if (c) go('session', { type: 'mental', cat: c.dataset.cat, lv: S.settings.level });
+  });
+};
+function tipsSheet(cat) {
+  const c = CATS.find(x => x.id === cat);
+  openSheet(`<h3>${c.name} : techniques</h3><dl class="tips">${TIPS[cat].map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>
+    <div class="actions"><button class="btn primary" data-start>S’entraîner</button></div>`,
+  sh => sh.addEventListener('click', e => { if (e.target.closest('[data-start]')) { closeSheet(true); go('session', { type: 'mental', cat, lv: S.settings.level }); } }));
+}
+
+/* ---------- séance ---------- */
+function factItem(k, form = 'mul') {
+  let [a, b] = fparse(k);
+  if (Math.random() < 0.5) [a, b] = [b, a];
+  const p = a * b;
+  let q, ans;
+  if (form === 'missR') { q = `${a} × ${SLOT} = ${p}`; ans = b; }
+  else if (form === 'missL') { q = `${SLOT} × ${b} = ${p}`; ans = a; }
+  else if (form === 'div') { q = `${p} ÷ ${a} = ${SLOT}`; ans = b; }
+  else { q = `${a} × ${b} = ${SLOT}`; ans = p; }
+  return { kind: 'fact', k, a, b, form, q, ans, tip: strategy(a, b) };
+}
+function makeSession(cfg) {
+  const ses = { title: '', queue: [], gen: null, total: 0, retype: true, requeue: true, timed: 0 };
+  const items = keys => keys.map(k => factItem(k));
+  switch (cfg.type) {
+    case 'adaptive': ses.title = 'Adaptatif'; ses.queue = items(buildAdaptive(S)); break;
+    case 'diag': ses.title = 'Bilan'; ses.queue = items(shuffle(factKeys(S.settings.max).filter(k => !seenF(S, k)))); ses.requeue = false; break;
+    case 'table': ses.title = `Table de ${cfg.n}`; ses.queue = items(buildTable(S, cfg.n)); break;
+    case 'family': ses.title = 'Familles'; ses.queue = buildFamily(S).map(x => factItem(x.k, x.form)); break;
+    case 'weak': ses.title = 'Points faibles'; ses.queue = items(buildWeak(S)); break;
+    case 'lesson': {
+      const L = LESSONS.find(l => l.id === cfg.id);
+      ses.title = L.title; ses.label = 'Exercice guidé';
+      ses.queue = items(shuffle(lessonKeys(L, S.settings.max)).slice(0, 10));
+      const half = Math.ceil(ses.queue.length / 2);
+      ses.queue.forEach((it, i) => { if (i < half) it.study = true; });
+      break;
+    }
+    case 'sprint': {
+      ses.title = 'Sprint 60 s'; ses.timed = 60; ses.retype = false; ses.requeue = false;
+      const keys = factKeys(S.settings.max); let last = null;
+      ses.gen = () => { let k; do k = pick(keys); while (k === last && keys.length > 1); last = k; return factItem(k); };
+      break;
+    }
+    case 'mental': {
+      ses.title = CATS.find(c => c.id === cfg.cat).name + ['', ', facile', ', moyen', ', difficile'][cfg.lv];
+      ses.retype = false; ses.requeue = false; ses.total = S.settings.len;
+      ses.gen = () => genMental(cfg.cat, cfg.lv);
+      break;
+    }
+  }
+  if (!ses.gen) ses.total = ses.queue.length;
+  return ses;
+}
+
+const padHTML = () => ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k =>
+  k === 'del' ? `<button class="key del" data-k="del" aria-label="Effacer">${I.del}</button>`
+    : k === 'ok' ? `<button class="key ok" data-k="ok" aria-label="Valider">${I.check}</button>`
+      : `<button class="key" data-k="${k}">${k}</button>`).join('');
+
+function exprHTML(q) {
+  return q.replace(/ (×|÷|=|\+|−|mod) /g, (m, op) => `<span class="op${op === 'mod' ? ' mod' : ''}">${op}</span>`)
+    .replace(SLOT, '<span class="slot"></span>');
+}
+function tipHTML(it, full) {
+  if (it.kind === 'fact') {
+    const line = full ? it.tip.line : it.tip.hint;
+    return `<span class="t">${it.tip.title}</span>${line ? `<span class="m">${line}</span>` : ''}`;
+  }
+  return `<span class="t">${it.tip}</span>`;
+}
+function stepsHTML(it, input) {
+  return `${input ? `<span class="you">Ta réponse : <s>${group(input)}</s></span>` : ''}<span class="t">${it.tip}</span>${it.steps.map(s => `<span class="m">${s}</span>`).join('')}`;
+}
+
+const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+function gestureHint(ses) {
+  if (finePointer.matches) return ses.timed ? 'Flèche gauche pour passer.' : 'Entrée pour valider, flèche gauche pour passer, flèche haut pour un indice.';
+  return ses.timed ? 'Glisse vers la gauche pour passer.' : 'Glisse vers la gauche pour passer, vers le haut pour un indice.';
+}
+VIEWS.session = (el, cfg) => {
+  const ses = makeSession(cfg);
+  if (!ses.gen && !ses.queue.length) {
+    el.classList.remove('screen-session');
+    el.innerHTML = `<div class="inner">${topBar()}<h1 class="title">${ses.title || 'Séance'}</h1><p class="intro">Rien à réviser ici pour l’instant. Lance une séance adaptative : elle choisira les faits pour toi.</p><div class="actions"><button class="btn primary" data-act="adaptive">Séance adaptative</button></div></div>`;
+    el.addEventListener('click', e => { if (e.target.closest('[data-act="adaptive"]')) go('session', { type: 'adaptive' }, { replace: true }); });
+    return;
+  }
+  const showGestureHint = (S.flags.gh || 0) < 3;
+  if (showGestureHint) { S.flags.gh = (S.flags.gh || 0) + 1; save(); }
+  el.innerHTML = `
+    <div class="s-top"><button class="icon" data-act="quit" aria-label="Terminer la séance">${I.close}</button><div class="bar" aria-hidden="true"><i></i></div><span class="count" aria-live="polite"></span></div>
+    <div class="stage"><div class="card"><p class="title-s">${ses.label || ses.title}</p><div class="expr" aria-live="polite"></div><div class="sub"></div><div class="note" aria-live="polite"></div></div>
+      <p class="ghint">${showGestureHint ? gestureHint(ses) : ''}</p></div>
+    <div class="pad">${padHTML()}</div>
+    <div class="cont" hidden><button class="btn primary" data-act="next">Continuer</button></div>`;
+  const $ = s => el.querySelector(s);
+  const expr = $('.expr'), note = $('.note'), sub = $('.sub'), card = $('.card'), stage = $('.stage'), bar = $('.bar i'), count = $('.count'), pad = $('.pad'), cont = $('.cont');
+  let item = null, input = '', phase = 'idle', t0 = 0, aided = false, done = 0, score = 0, endAt = 0, timer = 0;
+  const results = [], newReflex = new Set(), requeued = {};
+  const slot = () => expr.querySelector('.slot');
+
+  function renderSlot() {
+    const s = slot(); if (!s) return;
+    const caret = phase === 'answer' || phase === 'fix' ? '<i class="caret"></i>' : '';
+    if (!input && phase === 'fix') s.innerHTML = caret + `<span class="ghost">${F(item.ans)}</span>`;
+    else s.innerHTML = `<span>${group(input)}</span>` + caret;
+  }
+  function fit() {
+    const target = expr.classList.contains('stack') ? expr.querySelector('.q') : expr;
+    const maxW = card.clientWidth;
+    if (!maxW) return;
+    let size = parseFloat(getComputedStyle(expr).fontSize), guard = 0;
+    const lineW = () => Math.max(target.scrollWidth, expr.classList.contains('stack') ? expr.querySelector('.aline').scrollWidth : 0);
+    while (lineW() > maxW && size > 22 && guard++ < 40) { size -= 2; expr.style.fontSize = size + 'px'; }
+  }
+  function progress() {
+    if (ses.timed) { count.textContent = String(score); return; }
+    const total = ses.gen ? ses.total : done + ses.queue.length + (phase === 'done' ? 0 : 1);
+    bar.style.width = `${(done / total) * 100}%`;
+    count.textContent = `${Math.min(done + 1, total)}/${total}`;
+  }
+  function show(it, first) {
+    item = it; input = ''; aided = false; phase = 'answer';
+    const stack = it.kind === 'mental';
+    expr.className = 'expr' + (stack ? ' stack' : '');
+    expr.style.fontSize = '';
+    expr.innerHTML = stack ? `<div class="q">${exprHTML(it.q)}</div><div class="aline"><span class="slot"></span></div>` : exprHTML(it.q);
+    sub.textContent = it.sub || '';
+    note.innerHTML = it.study ? tipHTML(it) : '';
+    renderSlot(); fit();
+    pad.hidden = false; cont.hidden = true;
+    progress();
+    if (!first) anim(card, [{ opacity: 0, transform: 'translateX(32px)' }, { opacity: 1, transform: 'none' }], 280);
+    t0 = performance.now();
+  }
+  function nextItem() {
+    if (phase === 'done') return;
+    if (ses.timed && performance.now() >= endAt) return finish();
+    let it;
+    if (ses.gen) { if (ses.total && done >= ses.total) return finish(); it = ses.gen(); }
+    else it = ses.queue.shift();
+    if (!it) return finish();
+    show(it);
+  }
+  function requeue(it) {
+    const c = requeued[it.k] || 0;
+    if (c >= 2) return;
+    requeued[it.k] = c + 1;
+    ses.queue.splice(Math.min(ses.queue.length, 2 + Math.floor(Math.random() * 3)), 0, factItem(it.k, it.form));
+  }
+  function submit(skipped) {
+    const ms = performance.now() - t0, s = slot();
+    const ok = !skipped && input !== '' && Number(input) === item.ans;
+    if (phase === 'fix') {
+      if (ok) { phase = 'lock'; s.classList.add('ok'); renderSlot(); setTimeout(nextItem, 240); }
+      else { shake(s); input = ''; setTimeout(renderSlot, 200); }
+      return;
+    }
+    phase = 'lock';
+    if (item.kind === 'fact' && !item.study) {
+      const r = recordFact(S, item.k, ok, skipped ? null : ms, aided);
+      if (r.after === 4 && r.before < 4) newReflex.add(item.k);
+    } else if (item.kind === 'mental') recordMental(S, item.cat, item.lv, ok, skipped ? null : ms);
+    save();
+    done++; if (ok) score++;
+    results.push({ it: item, ok, ms: skipped ? null : ms, input, aided });
+    renderSlot();
+    if (ok) {
+      s.classList.add('ok'); pop(s);
+      progress();
+      setTimeout(nextItem, ses.timed ? 140 : aided || item.study ? 520 : 280);
+      return;
+    }
+    s.classList.add('bad');
+    if (!skipped) shake(s);
+    if (item.kind === 'fact' && ses.requeue && !item.study) requeue(item);
+    progress();
+    if (ses.timed) {
+      setTimeout(() => { s.className = 'slot reveal'; s.innerHTML = F(item.ans); }, 260);
+      setTimeout(nextItem, 950);
+      return;
+    }
+    const wrongInput = skipped ? '' : input;
+    setTimeout(() => {
+      if (phase === 'done') return;
+      s.classList.remove('bad');
+      if (ses.retype) {
+        phase = 'fix'; input = '';
+        const showDo = (S.flags.fx || 0) < 4; if (showDo) { S.flags.fx = (S.flags.fx || 0) + 1; save(); }
+        note.innerHTML = tipHTML(item, true) + (showDo ? '<span class="do">Recopie la réponse pour continuer.</span>' : '');
+        renderSlot();
+      } else {
+        phase = 'review';
+        s.classList.add('reveal'); s.innerHTML = F(item.ans);
+        note.innerHTML = stepsHTML(item, wrongInput);
+        pad.hidden = true; cont.hidden = false;
+        fit();
+        if (matchMedia('(hover: hover)').matches) cont.querySelector('button').focus({ preventScroll: true });
+      }
+      anim(note, [{ opacity: 0 }, { opacity: 1 }], 220);
+    }, skipped ? 60 : 430);
+  }
+  function press(k) {
+    if (phase === 'review') { if (k === 'ok') nextItem(); return; }
+    if (phase !== 'answer' && phase !== 'fix') return;
+    if (k === 'del') { input = input.slice(0, -1); renderSlot(); return; }
+    if (k === 'ok') { if (input) submit(false); return; }
+    if (input.length >= 9) return;
+    input += k; renderSlot(); fit();
+    if (S.settings.auto && input.length >= String(item.ans).length) submit(false);
+  }
+  function hint() {
+    if (phase !== 'answer' || aided || item.study || ses.timed) return;
+    aided = true;
+    note.innerHTML = tipHTML(item, false);
+    anim(note, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], 240);
+  }
+  function skip() { if (phase === 'answer') { input = ''; submit(true); } }
+  function finish() {
+    if (phase === 'done') return;
+    phase = 'done'; clearTimeout(timer);
+    const res = { cfg, title: ses.title, timed: ses.timed, score, done, results, newReflex: [...newReflex] };
+    if (ses.timed) {
+      const key = String(S.settings.max), prev = S.sprint[key] || 0;
+      res.best = Math.max(prev, score); res.record = score > prev && prev > 0; res.first = !prev;
+      S.sprint[key] = res.best; save();
+    }
+    go('summary', res, { replace: true });
+  }
+  function quit() {
+    if (phase === 'done') return;
+    if (!ses.timed && done >= 3) finish();
+    else { phase = 'done'; clearTimeout(timer); back(); }
+  }
+
+  // clavier tactile : réaction au toucher, sans attendre le relâchement
+  pad.addEventListener('pointerdown', e => {
+    const k = e.target.closest('.key'); if (!k) return;
+    e.preventDefault();
+    k.classList.add('down'); setTimeout(() => k.classList.remove('down'), 110);
+    press(k.dataset.k);
+  });
+  el.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'quit') quit();
+    if (a.dataset.act === 'next') nextItem();
+  });
+  // gestes sur la carte
+  let gx = null, gy = 0;
+  stage.addEventListener('pointerdown', e => { if (phase !== 'answer' || e.button) return; gx = e.clientX; gy = e.clientY; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener('pointermove', e => {
+    if (gx === null) return;
+    const dx = e.clientX - gx, dy = e.clientY - gy;
+    card.style.transform = `translate(${Math.min(0, dx) * 0.45}px, ${Math.min(0, dy) * 0.3}px)`;
+    card.style.opacity = String(1 - Math.min(0.5, Math.abs(Math.min(0, dx)) / 400));
+  });
+  const gEnd = e => {
+    if (gx === null) return;
+    const dx = e.clientX - gx, dy = e.clientY - gy; gx = null;
+    card.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s'; card.style.transform = ''; card.style.opacity = '';
+    setTimeout(() => { card.style.transition = ''; }, 260);
+    if (e.type === 'pointercancel') return;
+    if (dx < -70 && Math.abs(dy) < 70) skip();
+    else if (dy < -60 && Math.abs(dx) < 60) hint();
+  };
+  stage.addEventListener('pointerup', gEnd); stage.addEventListener('pointercancel', gEnd);
+  // clavier physique
+  const onKey = e => {
+    if (sheet || e.metaKey || e.ctrlKey || e.altKey) return;
+    let k = null;
+    if (/^[0-9]$/.test(e.key)) k = e.key;
+    else if (e.key === 'Backspace') k = 'del';
+    else if (e.key === 'Enter') k = 'ok';
+    else if (e.key === 'ArrowLeft') { skip(); return; }
+    else if (e.key === 'ArrowUp') { hint(); return; }
+    else if (e.key === 'Escape') { quit(); return; }
+    if (!k) return;
+    e.preventDefault();
+    const btn = pad.querySelector(`[data-k="${k}"]`);
+    if (btn && !pad.hidden) { btn.classList.add('down'); setTimeout(() => btn.classList.remove('down'), 110); }
+    press(k);
+  };
+  document.addEventListener('keydown', onKey);
+  el._cleanup = () => { document.removeEventListener('keydown', onKey); clearTimeout(timer); phase = 'done'; };
+
+  if (ses.timed) {
+    endAt = performance.now() + ses.timed * 1000 + 350;
+    count.classList.add('big');
+    bar.style.transition = 'none'; bar.style.width = '100%';
+    requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `width ${ses.timed}s linear`; bar.style.width = '0%'; }));
+    timer = setTimeout(finish, ses.timed * 1000 + 350);
+  }
+  show(ses.gen ? ses.gen() : ses.queue.shift(), true);
+};
+
+/* ---------- bilan de séance ---------- */
+VIEWS.summary = (el, r) => {
+  const times = r.results.filter(x => x.ok && x.ms != null && !x.aided).map(x => x.ms).sort((a, b) => a - b);
+  const med = times.length ? times[Math.floor(times.length / 2)] : null;
+  const seen = new Set();
+  const wrong = r.results.filter(x => !x.ok).filter(x => { const id = x.it.kind === 'fact' ? x.it.k : x.it.q; if (seen.has(id)) return false; seen.add(id); return true; });
+  let head;
+  const parts = [];
+  if (r.timed) {
+    head = `<span class="big">${r.score}</span><span class="of">en 60 s</span>`;
+    parts.push(r.record ? `Nouveau record pour les tables jusqu’à ${S.settings.max}.` : r.first ? 'Premier score enregistré.' : `Ton record : ${r.best}.`);
+  } else {
+    head = `<span class="big">${r.score}</span><span class="of">sur ${r.done}</span>`;
+    if (med) parts.push(`Temps médian : ${sec(med)}.`);
+  }
+  const nr = r.newReflex.length;
+  if (nr) parts.push(`${nr} fait${nr > 1 ? 's' : ''} devenu${nr > 1 ? 's' : ''} réflexe${nr > 1 ? 's' : ''} :`);
+  const line = parts.join(' ');
+  const errItem = x => {
+    const it = x.it;
+    if (it.kind === 'fact') return `<li><div class="e-q">${it.a} × ${it.b} = ${F(it.a * it.b)}</div><div class="e-t"><b>${it.tip.title}</b> : ${it.tip.line}</div></li>`;
+    return `<li><div class="e-q">${exprHTML(it.q).replace(/<span class="op[^"]*">([^<]*)<\/span>/g, ' $1 ')} = ${F(it.ans)}</div><div class="e-t">${x.input ? `Ta réponse : ${group(x.input)}. ` : ''}<b>${it.tip}</b></div><div class="e-steps">${it.steps.join('<br>')}</div></li>`;
+  };
+  el.innerHTML = `<div class="inner">
+    <header class="top"><span></span><button class="icon" data-act="done" aria-label="Fermer">${I.close}</button></header>
+    <p class="sum-title">${r.title}</p>
+    <div class="sum-score">${head}</div>
+    ${line ? `<p class="sum-line">${line}</p>` : ''}
+    ${r.newReflex.length ? `<div class="chips">${r.newReflex.map(k => { const [a, b] = fparse(k); return `<button class="fact l4" data-k="${k}">${a} × ${b}</button>`; }).join('')}</div>` : ''}
+    ${wrong.length ? `<h2 class="h2">À retenir</h2><ul class="errs">${wrong.map(errItem).join('')}</ul>` : r.done ? '<p class="sum-line">Aucune erreur.</p>' : ''}
+    <div class="actions"><button class="btn primary" data-act="again">Recommencer</button><button class="btn" data-act="done">Terminer</button></div></div>`;
+  el.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'again') go('session', r.cfg, { replace: true });
+    if (a.dataset.act === 'done') back();
+  });
+};
+
+/* ---------- réglages ---------- */
+VIEWS.settings = el => {
+  const s = S.settings;
+  const seg = (label, key, opts) => `<div class="set"><span class="set-l">${label}</span><div class="seg" style="--n:${opts.length}"><i class="seg-ind"></i>${opts.map(([v, t]) => `<button data-set="${key}" data-v="${v}" aria-selected="${String(s[key]) === String(v)}">${t}</button>`).join('')}</div></div>`;
+  el.innerHTML = `<div class="inner">${topBar()}<h1 class="title">Réglages</h1>
+    ${seg('Tables jusqu’à', 'max', [[10, '10'], [12, '12'], [20, '20']])}
+    ${seg('Seuil réflexe', 'thr', [[2, '2 s'], [3, '3 s'], [4, '4 s']])}
+    <p class="set-help">Un fait devient réflexe quand tu y réponds juste en moins de ce temps, plusieurs fois et à plusieurs jours d’écart. Au-delà de 12, chaque facteur ajoute 2 s.</p>
+    ${seg('Questions par séance', 'len', [[10, '10'], [20, '20'], [30, '30']])}
+    ${seg('Validation', 'auto', [[true, 'Automatique'], [false, 'Avec ✓']])}
+    <p class="set-help">Automatique : la réponse est vérifiée dès qu’elle a le bon nombre de chiffres.</p>
+    ${seg('Thème', 'theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']])}
+    <h2 class="h2">Progression</h2>
+    <p class="set-help" style="margin-top:0">Elle est enregistrée sur cet appareil. Exporte-la pour la sauvegarder ou la transférer sur un autre appareil.</p>
+    <div class="actions two" style="margin-top:0"><button class="btn" data-act="export">Exporter</button><button class="btn" data-act="import">Importer</button></div>
+    <div class="actions"><button class="btn danger" data-act="reset">Effacer la progression</button><button class="btn link" data-go="method">Pourquoi cette méthode</button></div>
+    <input type="file" accept="application/json,.json" hidden></div>`;
+  el.querySelectorAll('.seg').forEach(syncSeg);
+  const file = el.querySelector('input[type=file]');
+  let resetArmed = 0;
+  el.addEventListener('click', async e => {
+    const b = e.target.closest('[data-set]');
+    if (b) {
+      const key = b.dataset.set, raw = b.dataset.v;
+      s[key] = raw === 'true' ? true : raw === 'false' ? false : isNaN(+raw) ? raw : +raw;
+      save();
+      b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+      syncSeg(b.parentElement);
+      if (key === 'theme') applyTheme();
+      if (key === 'max') firstHome = true;
+      return;
+    }
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'export') exportData();
+    if (a.dataset.act === 'import') file.click();
+    if (a.dataset.act === 'reset') {
+      if (Date.now() - resetArmed < 4000) {
+        const keep = S.settings; S = defaultState(); S.settings = keep; save(); firstHome = true;
+        a.textContent = 'Effacer la progression'; toast('Progression effacée.'); resetArmed = 0;
+      } else {
+        resetArmed = Date.now(); a.textContent = 'Toucher encore pour confirmer';
+        setTimeout(() => { if (Date.now() - resetArmed >= 3900) a.textContent = 'Effacer la progression'; }, 4000);
+      }
+    }
+  });
+  file.addEventListener('change', async () => {
+    const f = file.files[0]; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!data || typeof data.facts !== 'object') throw new Error('format');
+      S = migrate(data); save(); applyTheme(); firstHome = true;
+      toast('Progression importée.'); rerender();
+    } catch (err) { toast('Fichier illisible : choisis un export PocketTables (.json).'); }
+    file.value = '';
+  });
+};
+async function exportData() {
+  const name = `pockettables-${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify(S)], { type: 'application/json' });
+  try {
+    const f = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Progression PocketTables' }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ---------- méthode ---------- */
+VIEWS.method = el => {
+  el.innerHTML = `<div class="inner method">${topBar()}<h1 class="title">La méthode</h1>
+    <p>Le but n’est pas de réciter les tables, mais que chaque produit sorte sans calcul, comme un mot qu’on lit. La recherche sur la mémoire et sur l’apprentissage des faits arithmétiques converge vers quelques principes, que l’app applique.</p>
+    <h2>Comprendre avant de mémoriser</h2>
+    <p>Les élèves qui retiennent le mieux les tables s’appuient d’abord sur des stratégies : doubler, passer par ×10, partir d’un carré. Ces stratégies rendent chaque fait reconstructible, puis la pratique les automatise. C’est l’ordre des leçons.</p>
+    <p class="ref">Baroody, 2006 ; Baroody, Bajwa et Eiland, 2009.</p>
+    <h2>Se tester plutôt que relire</h2>
+    <p>Retrouver une réponse en mémoire la renforce bien plus que la relire. Chaque question te fait produire la réponse, sans choix multiple.</p>
+    <p class="ref">Roediger et Karpicke, 2006.</p>
+    <h2>Espacer les révisions</h2>
+    <p>Chaque fait a un niveau, de 0 à 5. Une réponse juste et rapide le fait monter, une erreur le ramène à 0. Plus le niveau est haut, plus la révision suivante est lointaine : 10 minutes, 1 jour, 3 jours, une semaine, trois semaines. Tu revois donc souvent ce qui est fragile, rarement ce qui est acquis.</p>
+    <p class="ref">Leitner, 1972 ; Cepeda et al., 2006.</p>
+    <h2>Mélanger les tables</h2>
+    <p>Réviser une table à la fois donne une impression de maîtrise trompeuse : on devine la suite. Mélanger oblige à reconnaître chaque fait pour lui-même. Le mode Une table existe pour cibler, mais l’entraînement adaptatif mélange toujours.</p>
+    <p class="ref">Rohrer et Taylor, 2007.</p>
+    <h2>Réussir souvent</h2>
+    <p>Les faits nouveaux ou fragiles sont glissés entre des faits sûrs, environ un pour deux. Le taux de réussite reste élevé, ce qui garde la motivation et consolide les acquis.</p>
+    <p class="ref">Burns, 2005, répétition incrémentale.</p>
+    <h2>Corriger tout de suite</h2>
+    <p>Après une erreur, la bonne réponse et sa stratégie s’affichent, et tu la recopies avant de continuer. Le fait revient quelques questions plus tard dans la même séance.</p>
+    <p class="ref">Skinner, McLaughlin et Logan, 1997, méthode cover-copy-compare.</p>
+    <h2>La vitesse comme mesure, pas comme pression</h2>
+    <p>Un fait est réflexe quand la réponse est juste et arrive en moins de 3 secondes, de façon répétée. Le temps est mesuré en silence. Les tests chronométrés sont débattus, car l’anxiété mathématique occupe la mémoire de travail : le sprint reste donc facultatif, à faire quand les faits sont déjà sûrs.</p>
+    <p class="ref">Ramirez et al., 2013 ; Boaler, 2014.</p>
+    <h2>Les approches proposées</h2>
+    <p><b>Leçons</b> : une stratégie expliquée, puis pratiquée avec l’aide affichée, puis sans. <b>Adaptatif</b> : la répétition espacée décide pour toi, c’est le mode à utiliser au quotidien. <b>Bilan</b> : pour situer rapidement ce que tu sais déjà. <b>Une table</b> et <b>Points faibles</b> : pour cibler. <b>Familles</b> : le même fait sous forme de produit, de facteur manquant et de division, pour relier ce qu’on sait. <b>Sprint</b> : pour mesurer ta fluidité.</p>
+    <p>Quelques minutes par jour valent mieux qu’une longue séance par semaine.</p></div>`;
+};
+
+/* ================= démarrage ================= */
+document.addEventListener('click', e => {
+  if (!e.target.closest('#app')) return;
+  const back_ = e.target.closest('[data-act="back"]'); if (back_) return back();
+  const g = e.target.closest('[data-go]');
+  if (g) { const params = g.dataset.id ? { id: g.dataset.id } : {}; return go(g.dataset.go, params); }
+  const k = e.target.closest('[data-k]:not(.key)'); if (k) return factSheet(k.dataset.k);
+  const t = e.target.closest('[data-table]'); if (t) return go('session', { type: 'table', n: +t.dataset.table });
+});
+// balayage depuis le bord gauche : retour
+(() => {
+  let x0 = null, y0 = 0;
+  document.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX < 22 && stack.length > 1 && !sheet ? t.clientX : null; y0 = t.clientY; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = Math.abs(t.clientY - y0); x0 = null;
+    if (dx > 70 && dy < 80) {
+      const cur = document.querySelector('.screen.cur');
+      if (cur && cur.classList.contains('screen-session') && cur.querySelector('[data-act="quit"]')) cur.querySelector('[data-act="quit"]').click();
+      else back();
+    }
+  }, { passive: true });
+})();
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet) closeSheet(); });
+
+applyTheme();
+stack.push({ name: 'home', params: {} });
+history.replaceState({ d: 1 }, '');
+render(stack[0], 'none');
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+</script>
+</body>
+</html>
